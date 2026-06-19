@@ -428,6 +428,124 @@ q.exec();
 
 ---
 
+# Часть 8. SerialPort — общаемся с «железом» (Arduino) 🔌🔧
+
+🧠 Модуль **`serialport`** позволяет программе разговаривать с устройствами по **COM-порту** (последовательный порт): **Arduino**, датчики, микроконтроллеры, GPS-модули. Для любителя техники — самое вкусное: можно из C++ зажечь светодиод на Arduino.
+
+🔧 Аналогия: COM-порт — это «провод-телефон» между компьютером и устройством: по нему шлёшь байты туда и принимаешь обратно.
+
+🛠 **`.pro`:** `QT += serialport`. Главные классы: `QSerialPortInfo` (узнать порты), `QSerialPort` (само соединение).
+
+## Урок 8.1. Найти, на каком порту устройство
+
+```cpp
+#include <QCoreApplication>
+#include <QSerialPortInfo>
+#include <QDebug>
+
+int main(int argc, char* argv[]) {
+    QCoreApplication app(argc, argv);
+    for (const QSerialPortInfo& info : QSerialPortInfo::availablePorts()) {
+        qDebug() << info.portName() << "-" << info.description();
+    }
+    return 0;
+}
+```
+
+🤖 Выведет список портов, например `"COM3" - "Arduino Uno"`. Так ты узнаёшь имя порта своего устройства.
+
+## Урок 8.2. Послать команду и прочитать ответ
+
+```cpp
+#include <QSerialPort>
+#include <QDebug>
+
+QSerialPort port;
+port.setPortName("COM3");        // имя из прошлого примера
+port.setBaudRate(9600);          // ⚠️ скорость должна совпадать с прошивкой Arduino!
+
+if (port.open(QIODevice::ReadWrite)) {
+    port.write("LED_ON\n");                  // послали команду устройству
+    port.waitForBytesWritten(100);
+
+    if (port.waitForReadyRead(1000)) {       // ждём ответ до 1 секунды
+        qDebug() << "Arduino otvetil:" << port.readAll();
+    }
+    port.close();
+} else {
+    qDebug() << "Ne udalos otkryt port:" << port.errorString();
+}
+```
+
+🤖 Разбор:
+- `setBaudRate(9600)` — «скорость» порта; она **обязана совпадать** с той, что в скетче Arduino (`Serial.begin(9600)`), иначе придёт «каша».
+- `write(...)` — отправить байты; `readAll()` — забрать пришедшее.
+- ⚠️ `waitForReadyRead` **блокирует** (синхронно) — для окна так нельзя (заморозит интерфейс). Правильно — асинхронно, по **сигналу `readyRead`** (привет файлам про сигналы/слоты и асинхронность).
+- 🔧 `port.close()` лучше доверить **RAII** (закрыть в деструкторе / через scope guard — см. RAII-файл), чтобы не забыть.
+
+🎯 **Попробуй сам:** залей в Arduino скетч, который по команде `"LED_ON\n"` зажигает светодиод и отвечает `"OK"`. Из C++ пошли команду и прочитай ответ.
+
+---
+
+# Часть 9. Multimedia — звук и видео 🔊
+
+🧠 Модуль **`multimedia`** проигрывает звуки, музыку и видео, работает с камерой. Два главных инструмента для звука:
+- **`QSoundEffect`** — короткие звуки с мгновенным откликом (пик, сигнал, эффект). Играет `WAV`.
+- **`QMediaPlayer`** — музыка и видео из файлов (`mp3`, `mp4`…).
+
+🛠 **`.pro`:** `QT += multimedia`.
+
+## Урок 9.1. «Бип» при событии (`QSoundEffect`)
+
+🔧 Например, пусть сканер **пикает**, когда нашёл открытый порт.
+
+```cpp
+#include <QCoreApplication>
+#include <QSoundEffect>
+#include <QUrl>
+
+int main(int argc, char* argv[]) {
+    QCoreApplication app(argc, argv);
+
+    QSoundEffect bip;
+    bip.setSource(QUrl::fromLocalFile("beep.wav"));
+    bip.setVolume(0.8);
+    bip.play();                         // звук играет асинхронно!
+
+    // выйдем, когда звук доиграет:
+    QObject::connect(&bip, &QSoundEffect::playingChanged, [&]{
+        if (!bip.isPlaying()) app.quit();
+    });
+    return app.exec();                  // ⚠️ без цикла событий звук не успеет сыграть
+}
+```
+
+🤖 Важное: звук играет **асинхронно** (в фоне), поэтому нужен **цикл событий** (`app.exec()`) — иначе программа закончится раньше, чем звук сыграет. Это та самая асинхронность из отдельного файла.
+
+## Урок 9.2. Проиграть музыку (`QMediaPlayer`, Qt 6)
+
+```cpp
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QUrl>
+
+QMediaPlayer player;
+QAudioOutput audio;                     // в Qt 6 звук идёт через отдельный «выход»
+player.setAudioOutput(&audio);
+audio.setVolume(0.5);
+
+player.setSource(QUrl::fromLocalFile("music.mp3"));
+player.play();                          // тоже нужен цикл событий
+```
+
+🤖 В Qt 6 у плеера звук выводится через отдельный объект `QAudioOutput` (в Qt 5 было иначе — частая путаница). `QSoundEffect` — для коротких эффектов, `QMediaPlayer` — для музыки и видео.
+
+⚠️ Нужны сами файлы (`beep.wav`, `music.mp3`) рядом с программой и работающий цикл событий.
+
+🎯 **Попробуй сам:** добавь в свой сканер портов `QSoundEffect`, чтобы он пикал на каждом найденном открытом порту.
+
+---
+
 ## 📋 Шпаргалка по `.pro`
 
 ```pro

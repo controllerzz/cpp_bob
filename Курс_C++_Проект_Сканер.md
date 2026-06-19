@@ -336,7 +336,181 @@ int main(int argc, char *argv[])
 
 ---
 
-# Часть 5. Как сделать «по-взрослому» (следующий уровень) 🚀
+# Часть 5. Делаем инструмент командной строки (CLI) ⌨️
+
+> До сих пор адрес и порты были **зашиты в код** — чтобы поменять цель, надо лезть в `main.cpp` и пересобирать. Настоящий инструмент берёт всё из **командной строки**: `portscan --host 127.0.0.1 --from 1 --to 1024`. А ещё его можно вызывать **из любого места**, добавив в системный путь (PATH). Сделаем это и для **Windows**, и для **Mac**.
+
+🛑 Напоминание: инструмент станет удобнее запускать — тем более держим правило из начала файла: сканируем **только своё**.
+
+## Урок 5.1. Аргументы командной строки: `argc` и `argv`
+
+🧠 Когда ты вводишь в консоли `portscan 127.0.0.1 80`, операционная система передаёт эти слова прямо в `main`:
+
+```cpp
+int main(int argc, char* argv[]) {
+    // argc — сколько слов (включая имя программы)
+    // argv — массив этих слов:
+    //   argv[0] = "portscan"    (имя самой программы)
+    //   argv[1] = "127.0.0.1"
+    //   argv[2] = "80"
+}
+```
+
+🕵️ **Под капотом:** этот массив кладёт в память **загрузчик ОС** при запуске процесса (помнишь рождение процесса в файле «Под капотом»?). Программа просто читает готовое.
+
+🤖 Разбирать `argv` руками можно, но скучно и легко ошибиться. В Qt есть удобный помощник — **`QCommandLineParser`**.
+
+## Урок 5.2. `QCommandLineParser` — параметры по-взрослому
+
+🧠 Этот класс сам разбирает `--host`, короткие `-H`, значения по умолчанию и даже **бесплатно даёт `--help` и `--version`**. Вот сканер портов, управляемый из командной строки:
+
+```cpp
+#include <QCoreApplication>
+#include <QCommandLineParser>
+#include <QTcpSocket>
+#include <QTextStream>
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication app(argc, argv);
+    QCoreApplication::setApplicationName("portscan");
+    QCoreApplication::setApplicationVersion("1.0");
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Prostoy skaner portov (tolko svoi seti!)");
+    parser.addHelpOption();       // даёт --help / -h
+    parser.addVersionOption();    // даёт --version / -v
+
+    //                     имена опции          описание            имя значения  по умолч.
+    QCommandLineOption hostOpt({"H", "host"},    "Adres celi.",       "host", "127.0.0.1");
+    QCommandLineOption fromOpt({"f", "from"},    "Nachalnyy port.",   "port", "1");
+    QCommandLineOption toOpt(  {"t", "to"},      "Konechnyy port.",   "port", "1024");
+    QCommandLineOption timeoutOpt("timeout",     "Taymaut na port, ms.", "ms", "200");
+
+    parser.addOption(hostOpt);
+    parser.addOption(fromOpt);
+    parser.addOption(toOpt);
+    parser.addOption(timeoutOpt);
+
+    parser.process(app);          // разобрать argv (сам обработает --help и ошибки)
+
+    QString host    = parser.value(hostOpt);
+    int     from    = parser.value(fromOpt).toInt();
+    int     to      = parser.value(toOpt).toInt();
+    int     timeout = parser.value(timeoutOpt).toInt();
+
+    QTextStream out(stdout);
+    out << "Skaniruyu " << host << " porty " << from << ".." << to << "\n";
+    out.flush();
+
+    for (int port = from; port <= to; ++port) {
+        QTcpSocket socket;
+        socket.connectToHost(host, port);
+        if (socket.waitForConnected(timeout)) {
+            out << "  port " << port << " OTKRYT\n";
+            out.flush();
+            socket.disconnectFromHost();
+        }
+    }
+    out << "Gotovo.\n";
+    return 0;
+}
+```
+
+🤖 Разбор:
+- `QCommandLineOption({"H","host"}, описание, имя_значения, по_умолчанию)` — описываем одну опцию: длинное имя `--host`, короткое `-H`, значение по умолчанию.
+- `parser.process(app)` — разбирает всё; если ввели `--help`, сам покажет справку и выйдет.
+- `parser.value(opt).toInt()` — берём значение (или умолчание) и превращаем в число.
+
+⚠️ Короткое `-h` уже занято справкой, поэтому для host берём `-H` (заглавная). У `--timeout` я не делал короткой формы, чтобы не путать с `-t` (`to`).
+
+🛠 **`.pro`:** ничего нового — `QCommandLineParser` лежит в модуле `core`, который уже подключён.
+
+Теперь программой можно пользоваться так:
+```
+portscan --help
+portscan --host 127.0.0.1 --from 1 --to 100
+portscan -H 192.168.1.1 -f 1 -t 1024 --timeout 300
+```
+
+🎯 **Попробуй сам:** добавь опцию `--closed`, чтобы печатать и закрытые порты. Потом сделай такой же CLI для сканера сети (опции `--net` и `--port`).
+
+## Урок 5.3. ⚠️ Важно: Qt-программе нужны её библиотеки
+
+🧠 Прежде чем «ставить» инструмент в систему — одна важная вещь. Твой `portscan` использует Qt, а значит **зависит** от библиотек Qt (`Qt6Core`, `Qt6Network`) и runtime компилятора. Внутри Qt Creator они находятся сами. Но если просто скопировать программу в другое место и запустить — будет ошибка вроде «не найден `Qt6Core.dll`».
+
+Решение — положить рядом с программой все нужные библиотеки. Для этого есть готовые инструменты:
+- **Windows:** `windeployqt`
+- **Mac:** `macdeployqt`
+
+Дальше — по шагам для каждой системы.
+
+## Урок 5.4. 🪟 Windows: установить в PATH
+
+🛠 По шагам:
+
+1. **Собери в режиме Release.** Слева внизу в Qt Creator переключи `Debug → Release`, нажми `Ctrl+B`. Найди `portscan.exe` в папке сборки (вида `build-...-Release`).
+2. **Сделай папку для инструмента**, например `C:\Tools\portscan`, и скопируй туда `portscan.exe`.
+3. **Собери зависимости.** Открой из меню Пуск «Qt 6.x (MinGW) command prompt» (или найди `windeployqt.exe` в `C:\Qt\6.x.x\mingw_64\bin`) и выполни:
+   ```
+   windeployqt C:\Tools\portscan\portscan.exe
+   ```
+   Он скопирует нужные DLL рядом. Теперь программа запустится в любом месте.
+4. **Добавь папку в PATH** — список папок, где система ищет программы по имени. Простой способ (PowerShell, для тебя, навсегда):
+   ```powershell
+   [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Tools\portscan", "User")
+   ```
+   Или через окно: «Изменение переменных среды текущего пользователя» → переменная **Path** → «Создать» → вписать `C:\Tools\portscan`.
+5. **Открой НОВОЕ окно консоли** (PATH применяется только в новых окнах) и проверь:
+   ```
+   portscan --host 127.0.0.1 --from 1 --to 100
+   ```
+
+🤖 Что такое **PATH**: когда ты вводишь команду, система ищет такую программу по папкам из списка PATH. Добавил свою папку → можешь звать программу по имени откуда угодно.
+
+## Урок 5.5. 🍎 Mac: установить в PATH
+
+🧠 На Mac наша `.pro` уже без `app_bundle` (строка `CONFIG -= app_bundle`), поэтому получается **обычный бинарник** `portscan`, а не `.app`. macOS использует оболочку **zsh**.
+
+🛠 По шагам:
+
+1. **Собери в Release**, найди бинарник `portscan` в папке сборки.
+2. **Зависимости Qt.** Чтобы бинарник нашёл фреймворки Qt вне Qt Creator, проще всего поставить Qt через **Homebrew** (`brew install qt`) — тогда библиотеки лежат в стандартном месте. (Для «коробочной» установки Qt используют `macdeployqt` с .app-обёрткой — это разберём, когда будем дорабатывать.)
+3. **Сделай файл исполняемым** (обычно уже так):
+   ```
+   chmod +x portscan
+   ```
+4. **Добавь в PATH.** Два простых варианта:
+   - **Самый лёгкий** — скопировать в `/usr/local/bin` (эта папка почти всегда уже в PATH):
+     ```
+     cp portscan /usr/local/bin/portscan
+     ```
+     (если попросит права — добавь `sudo` спереди)
+   - **Или** держать в своей папке `~/tools` и добавить её в PATH. Открой файл `~/.zshrc` и допиши строку:
+     ```
+     export PATH="$HOME/tools:$PATH"
+     ```
+     затем выполни `source ~/.zshrc` (или просто открой новое окно терминала).
+5. **Проверь в новом окне терминала:**
+   ```
+   portscan --host 127.0.0.1 --from 1 --to 100
+   ```
+
+🤖 Если macOS заругается, что бинарник «от неизвестного разработчика» — для своей собственной программы это снимается командой `xattr -d com.apple.quarantine portscan` (или правым кликом → «Открыть»).
+
+## Урок 5.6. Шпаргалка: Windows ⟷ Mac
+
+| Шаг | Windows 🪟 | Mac 🍎 |
+|---|---|---|
+| Собрать зависимости | `windeployqt prog.exe` | `macdeployqt` / Homebrew Qt |
+| Куда положить | `C:\Tools\portscan` | `/usr/local/bin` или `~/tools` |
+| Как добавить в PATH | `SetEnvironmentVariable(... "User")` или окно «Переменные среды» | строка `export PATH=...` в `~/.zshrc` |
+| Применить | открыть **новую** консоль | `source ~/.zshrc` / новое окно |
+| Запуск | `portscan --host ...` | `portscan --host ...` |
+
+---
+
+# Часть 6. Как сделать «по-взрослому» (следующий уровень) 🚀
 
 🤖 Наши сканеры простые и **медленные**, потому что стучатся **по очереди** (один за другим). Вот куда расти:
 
@@ -392,6 +566,11 @@ bool otkryt = s.waitForConnected(200);   // true -> порт открыт
 | **qmake** | Читает `.pro` и готовит сборку (создаёт Makefile) |
 | **Модуль Qt** | Часть библиотеки (`core`, `network`, `gui`…) в строке `QT +=` |
 | **`+=` / `-=` / `=`** | Добавить в список / убрать из списка / заменить весь список |
+| **CLI** | Программа, управляемая из командной строки параметрами |
+| **`argc` / `argv`** | Сколько слов в команде / массив самих слов (в `main`) |
+| **`QCommandLineParser`** | Qt-помощник, который разбирает параметры и даёт `--help` |
+| **PATH** | Список папок, где система ищет программы по имени |
+| **windeployqt / macdeployqt** | Кладут рядом с программой нужные библиотеки Qt |
 
 ---
 

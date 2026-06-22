@@ -69,8 +69,8 @@ int b{3.14};    // ✅ компилятор СКАЖЕТ «стоп, ты тер
 🧠 Слово `const` говорит: «эта переменная **не должна меняться**». Если ты случайно попробуешь её изменить — компилятор остановит тебя.
 
 ```cpp
-const int max_zhizney{3};    // правило игры: жизней всегда 3
-max_zhizney = 5;             // ⚠️ ОШИБКА компиляции — и это хорошо!
+const int max_lives{3};      // правило игры: жизней всегда 3
+max_lives = 5;               // ⚠️ ОШИБКА компиляции — и это хорошо!
 ```
 
 🤖 Зачем себя ограничивать? Потому что **ограничения защищают от ошибок**. Если значение по смыслу не должно меняться — пометь его `const`, и компилютер будет следить за этим вместо тебя. Это называется **const-корректность**.
@@ -84,13 +84,13 @@ max_zhizney = 5;             // ⚠️ ОШИБКА компиляции — и 
 🧠 Очень важная идея. Когда ты передаёшь данные в функцию, по умолчанию делается **копия**.
 
 ```cpp
-void isportit(int chislo) {   // chislo — это КОПИЯ
-    chislo = 999;
+void spoil(int number) {      // number — это КОПИЯ
+    number = 999;
 }
 
 int main() {
     int x{5};
-    isportit(x);
+    spoil(x);
     std::cout << x;   // выведет 5! Оригинал не изменился — меняли копию
 }
 ```
@@ -98,13 +98,13 @@ int main() {
 А **ссылка** (`&`) — это не копия, а «второе имя» того же самого:
 
 ```cpp
-void izmenit(int& chislo) {   // chislo — ССЫЛКА на оригинал
-    chislo = 999;
+void change(int& number) {    // number — ССЫЛКА на оригинал
+    number = 999;
 }
 
 int main() {
     int x{5};
-    izmenit(x);
+    change(x);
     std::cout << x;   // выведет 999! Меняли сам оригинал
 }
 ```
@@ -113,8 +113,8 @@ int main() {
 
 ```cpp
 // ✅ идеально: не копируем (быстро) и не можем испортить (безопасно)
-void privet(const std::string& imya) {
-    std::cout << "Privet, " << imya << "!\n";
+void greet(const std::string& name) {
+    std::cout << "Hello, " << name << "!\n";
 }
 ```
 
@@ -153,7 +153,7 @@ int main() {
 ```cpp
 auto x{5};            // компилятор понимает: это int
 auto pi{3.14};        // это double
-auto imya{std::string{"Bob"}};   // это std::string
+auto name{std::string{"Bob"}};   // это std::string
 ```
 
 🤖 `auto` особенно полезен с длинными типами из контейнеров (увидишь в Части F). Но не злоупотребляй: иногда явный тип читается понятнее.
@@ -169,13 +169,13 @@ auto imya{std::string{"Bob"}};   // это std::string
 🧠 Часто несколько данных описывают **один предмет**. Например, у точки есть `x` и `y`. У игрока — имя, здоровье, очки. Держать их отдельными переменными неудобно. **Структура** (`struct`) склеивает их в один новый тип.
 
 ```cpp
-struct Tochka {
+struct Point {
     int x{0};
     int y{0};
 };
 
 int main() {
-    Tochka t{3, 5};         // создаём точку
+    Point t{3, 5};          // создаём точку
     std::cout << t.x << ", " << t.y << "\n";   // 3, 5
     t.y = 10;               // меняем одно поле
 }
@@ -183,7 +183,7 @@ int main() {
 
 🤖 `t.x` читается «икс у точки t». Точка `.` — это «загляни внутрь». Поля (`x`, `y`) — это переменные **внутри** структуры. Заметь: я сразу написал `{0}` у полей — теперь точка по умолчанию в начале координат, никакого мусора (Правило №1!).
 
-🎯 **Попробуй сам:** опиши `struct Igrok` с полями `imya` (`std::string`), `zdorovie` (`int`), `ochki` (`int`). Создай игрока и выведи его данные.
+🎯 **Попробуй сам:** опиши `struct Player` с полями `name` (`std::string`), `health` (`int`), `score` (`int`). Создай игрока и выведи его данные.
 
 ---
 
@@ -193,10 +193,10 @@ int main() {
 
 ```cpp
 #include <vector>
-std::vector<Tochka> putь;        // список точек — например, маршрут
-putь.push_back({0, 0});
-putь.push_back({3, 5});
-putь.push_back({3, 10});
+std::vector<Point> path;         // список точек — например, маршрут
+path.push_back({0, 0});
+path.push_back({3, 5});
+path.push_back({3, 10});
 ```
 
 🤖 Вот мы и подобрались к идее, что данные можно **организовывать**. Структуры — первый шаг. Следующий, более мощный шаг — **классы** и **ООП**.
@@ -229,29 +229,29 @@ putь.push_back({3, 10});
 🧠 `class` похож на `struct`, но обычно содержит и данные, и методы (функции), которые с этими данными работают.
 
 ```cpp
-class Schetchik {
+class Counter {
 public:
-    void uvelichit() { ++znachenie_; }       // метод: увеличить на 1
-    void sbros()     { znachenie_ = 0; }      // метод: сбросить
-    int poluchit() const { return znachenie_; }  // метод: узнать значение
+    void increment() { ++value_; }            // метод: увеличить на 1
+    void reset()     { value_ = 0; }          // метод: сбросить
+    int get() const { return value_; }        // метод: узнать значение
 
 private:
-    int znachenie_{0};   // поле (данные), спрятано внутри
+    int value_{0};   // поле (данные), спрятано внутри
 };
 
 int main() {
-    Schetchik s;          // создаём объект-счётчик
-    s.uvelichit();
-    s.uvelichit();
-    s.uvelichit();
-    std::cout << s.poluchit();   // 3
+    Counter s;            // создаём объект-счётчик
+    s.increment();
+    s.increment();
+    s.increment();
+    std::cout << s.get();   // 3
 }
 ```
 
 🤖 Разбор:
-- `s.uvelichit()` — «попроси счётчик `s` увеличиться». Это **вызов метода**.
-- Метод `poluchit() const` помечен `const` — он только **читает** данные, ничего не меняет (Правило №2 в действии!).
-- Поле названо `znachenie_` с подчёркиванием в конце — это частая договорённость, чтобы было видно «это поле класса». Не обязательно, но удобно.
+- `s.increment()` — «попроси счётчик `s` увеличиться». Это **вызов метода**.
+- Метод `get() const` помечен `const` — он только **читает** данные, ничего не меняет (Правило №2 в действии!).
+- Поле названо `value_` с подчёркиванием в конце — это частая договорённость, чтобы было видно «это поле класса». Не обязательно, но удобно.
 
 ---
 
@@ -263,35 +263,35 @@ int main() {
 - `private` — «**спрятано** внутри». Снаружи доступа нет.
 
 ```cpp
-Schetchik s;
-s.uvelichit();      // ✅ можно: метод public
-s.znachenie_ = 100; // ⚠️ ОШИБКА: поле private, снаружи нельзя
+Counter s;
+s.increment();      // ✅ можно: метод public
+s.value_ = 100;     // ⚠️ ОШИБКА: поле private, снаружи нельзя
 ```
 
 🤖 Зачем прятать данные? Чтобы **защитить правила**. Представь класс «здоровье игрока»: оно не должно быть меньше 0 или больше 100. Если поле открыто — кто угодно случайно запишет туда `-50` или `99999`, и игра сломается. А если спрятать поле и пускать к нему **только через метод**, метод проследит за правилами:
 
 ```cpp
-class Igrok {
+class Player {
 public:
-    Igrok(std::string imya, int zdorovie)     // конструктор (см. след. урок)
-        : imya_{imya}, zdorovie_{zdorovie} {}
+    Player(std::string name, int health)      // конструктор (см. след. урок)
+        : name_{name}, health_{health} {}
 
-    void poluchitUron(int uron) {
-        zdorovie_ -= uron;
-        if (zdorovie_ < 0) zdorovie_ = 0;      // 🛡️ правило: не ниже 0
+    void takeDamage(int damage) {
+        health_ -= damage;
+        if (health_ < 0) health_ = 0;          // 🛡️ правило: не ниже 0
     }
-    void vylechit(int hp) {
-        zdorovie_ += hp;
-        if (zdorovie_ > 100) zdorovie_ = 100;  // 🛡️ правило: не выше 100
+    void heal(int hp) {
+        health_ += hp;
+        if (health_ > 100) health_ = 100;      // 🛡️ правило: не выше 100
     }
 
-    bool zhiv() const { return zdorovie_ > 0; }
-    int zdorovie() const { return zdorovie_; }
-    const std::string& imya() const { return imya_; }
+    bool isAlive() const { return health_ > 0; }
+    int health() const { return health_; }
+    const std::string& name() const { return name_; }
 
 private:
-    std::string imya_;
-    int zdorovie_{100};
+    std::string name_;
+    int health_{100};
 };
 ```
 
@@ -306,25 +306,25 @@ private:
 🧠 **Конструктор** — это специальный метод, который вызывается **автоматически** при создании объекта. Его задача — сделать так, чтобы объект родился **сразу в правильном состоянии** (помнишь Правило №1 про инициализацию? Конструктор — его старший брат).
 
 ```cpp
-class Igrok {
+class Player {
 public:
-    Igrok(std::string imya, int zdorovie)
-        : imya_{imya}, zdorovie_{zdorovie}    // ← список инициализации
+    Player(std::string name, int health)
+        : name_{name}, health_{health}        // ← список инициализации
     {
-        std::cout << "Igrok " << imya_ << " voshel v igru\n";
+        std::cout << "Player " << name_ << " entered the game\n";
     }
     // ...
 private:
-    std::string imya_;
-    int zdorovie_;
+    std::string name_;
+    int health_;
 };
 
 int main() {
-    Igrok bob{"Bob", 100};   // вызывается конструктор: bob сразу готов к игре
+    Player bob{"Bob", 100};  // вызывается конструктор: bob сразу готов к игре
 }
 ```
 
-🤖 Часть после двоеточия (`: imya_{imya}, zdorovie_{zdorovie}`) называется **список инициализации**. Это правильный способ задать поля — каждое поле получает значение **сразу при рождении**, без мусора и лишних шагов.
+🤖 Часть после двоеточия (`: name_{name}, health_{health}`) называется **список инициализации**. Это правильный способ задать поля — каждое поле получает значение **сразу при рождении**, без мусора и лишних шагов.
 
 ✅ **Правило Боба №7:** Конструктор должен оставлять объект в полностью готовом, правильном состоянии. После создания объектом сразу можно пользоваться — никаких «забыл настроить».
 
@@ -335,29 +335,29 @@ int main() {
 🧠 У рождения есть пара — **деструктор**. Он вызывается **автоматически**, когда объект умирает (помнишь Урок A.4 — переменная умирает на выходе из своих `{ }`). Имя деструктора — это имя класса со значком `~`.
 
 ```cpp
-class Lampa {
+class Lamp {
 public:
-    Lampa()  { std::cout << "💡 Lampa vklyuchena\n"; }   // конструктор
-    ~Lampa() { std::cout << "🌑 Lampa vyklyuchena\n"; }  // деструктор
+    Lamp()  { std::cout << "💡 Lamp on\n"; }    // конструктор
+    ~Lamp() { std::cout << "🌑 Lamp off\n"; }   // деструктор
 };
 
 int main() {
-    std::cout << "Vhodim v komnatu\n";
+    std::cout << "Entering the room\n";
     {
-        Lampa l;                          // конструктор: лампа включилась
-        std::cout << "V komnate svetlo\n";
+        Lamp l;                           // конструктор: лампа включилась
+        std::cout << "Room is bright\n";
     }   // ⚰️ l умирает -> деструктор -> лампа ВЫКЛЮЧИЛАСЬ САМА
-    std::cout << "Vyshli iz komnaty\n";
+    std::cout << "Left the room\n";
 }
 ```
 
 Вывод:
 ```
-Vhodim v komnatu
-💡 Lampa vklyuchena
-V komnate svetlo
-🌑 Lampa vyklyuchena
-Vyshli iz komnaty
+Entering the room
+💡 Lamp on
+Room is bright
+🌑 Lamp off
+Left the room
 ```
 
 🤖 Заметь: мы **нигде не написали «выключи лампу»** — она выключилась сама, автоматически, ровно когда объект `l` умер. Это не магия, это деструктор. И это — ключ к самому важному правилу C++, которое идёт следующим.
@@ -392,7 +392,7 @@ delete p;              // ⚠️ ОБЯЗАТЕЛЬНО вернуть! Забы
 Проблема: между `new` и `delete` легко всё испортить:
 ```cpp
 int* p = new int{5};
-if (chto_to_poshlo_ne_tak) {
+if (somethingWentWrong) {
     return;            // 💥 вышли из функции и ЗАБЫЛИ delete — утечка!
 }
 delete p;
@@ -421,10 +421,10 @@ delete p;
 ```cpp
 #include <memory>
 
-void primer() {
+void example() {
     auto p = std::make_unique<int>(5);   // взяли память
     std::cout << *p;                     // пользуемся, как обычным указателем
-    if (chto_to_poshlo_ne_tak) {
+    if (somethingWentWrong) {
         return;     // ✅ ничего не забыли! Память вернётся сама
     }
 }   // ⚰️ p умирает здесь -> память освобождается АВТОМАТИЧЕСКИ. delete не нужен!
@@ -572,16 +572,16 @@ void primer() {
 #include <iostream>
 
 int main() {
-    std::vector<int> ochki;      // пустой список чисел
-    ochki.push_back(10);         // добавить в конец
-    ochki.push_back(25);
-    ochki.push_back(7);
+    std::vector<int> score;      // пустой список чисел
+    score.push_back(10);         // добавить в конец
+    score.push_back(25);
+    score.push_back(7);
 
-    std::cout << "Vsego elementov: " << ochki.size() << "\n";   // 3
-    std::cout << "Pervyy: " << ochki[0] << "\n";                // 10
+    std::cout << "Total elements: " << score.size() << "\n";    // 3
+    std::cout << "First: " << score[0] << "\n";                 // 10
 
     // пройти по всем (современный, правильный способ):
-    for (int o : ochki) {
+    for (int o : score) {
         std::cout << o << " ";   // 10 25 7
     }
 }
@@ -590,11 +590,11 @@ int main() {
 🤖 Полезное:
 - `push_back(x)` — добавить `x` в конец.
 - `size()` — сколько элементов.
-- `ochki[i]` — элемент по индексу (быстро, но **не проверяет** выход за границы).
-- `ochki.at(i)` — то же, но **проверяет** границы и честно ругается, если вышел за край. Безопаснее.
-- `for (int o : ochki)` — «для каждого `o` из `ochki`». Это **range-based for** — правильный способ перебрать контейнер.
+- `score[i]` — элемент по индексу (быстро, но **не проверяет** выход за границы).
+- `score.at(i)` — то же, но **проверяет** границы и честно ругается, если вышел за край. Безопаснее.
+- `for (int o : score)` — «для каждого `o` из `score`». Это **range-based for** — правильный способ перебрать контейнер.
 
-⚠️ `ochki[5]` в векторе из 3 элементов — это **выход за границу**. Программа может выдать мусор или упасть. Это классическая дыра, которую ищут реверсеры. 🕵️ Хочешь безопасно — используй `.at(5)`, он честно сообщит об ошибке.
+⚠️ `score[5]` в векторе из 3 элементов — это **выход за границу**. Программа может выдать мусор или упасть. Это классическая дыра, которую ищут реверсеры. 🕵️ Хочешь безопасно — используй `.at(5)`, он честно сообщит об ошибке.
 
 ✅ **Правило Боба №11:** Забудь про старые C-массивы (`int arr[10];`). Используй `std::vector` — он безопаснее, удобнее и сам управляет памятью (RAII!).
 
@@ -606,9 +606,9 @@ int main() {
 
 ```cpp
 #include <array>
-std::array<int, 3> koordinaty{10, 20, 30};   // ровно 3 элемента
-std::cout << koordinaty[1];                    // 20
-std::cout << koordinaty.size();                // 3
+std::array<int, 3> coords{10, 20, 30};   // ровно 3 элемента
+std::cout << coords[1];                    // 20
+std::cout << coords.size();                // 3
 ```
 
 🤖 Когда количество элементов фиксировано (например, 3 координаты, 7 дней недели) — `std::array`. Когда количество меняется — `std::vector`.
@@ -621,15 +621,15 @@ std::cout << koordinaty.size();                // 3
 
 ```cpp
 #include <string>
-std::string slovo{"Privet"};
-std::cout << slovo.size() << "\n";     // 6 символов
-std::cout << slovo[0] << "\n";         // P
+std::string word{"Friend"};
+std::cout << word.size() << "\n";      // 6 символов
+std::cout << word[0] << "\n";          // F
 
-for (char c : slovo) {
-    std::cout << c << ".";             // P.r.i.v.e.t.
+for (char c : word) {
+    std::cout << c << ".";             // F.r.i.e.n.d.
 }
 
-slovo += " mir";                       // склейка строк
+word += " hi";                         // склейка строк
 ```
 
 ---
@@ -642,21 +642,21 @@ slovo += " mir";                       // склейка строк
 #include <map>
 #include <string>
 
-std::map<std::string, int> ochki;   // ключ — имя (string), значение — очки (int)
+std::map<std::string, int> score;   // ключ — имя (string), значение — очки (int)
 
-ochki["Bob"] = 100;
-ochki["Anna"] = 150;
-ochki["Bob"] += 20;                 // у Bob стало 120
+score["Bob"] = 100;
+score["Anna"] = 150;
+score["Bob"] += 20;                 // у Bob стало 120
 
-std::cout << "U Anny: " << ochki["Anna"] << "\n";   // 150
+std::cout << "Anna has: " << score["Anna"] << "\n";   // 150
 
 // пройти по всем парам (современный способ — structured bindings):
-for (const auto& [imya, ochko] : ochki) {
-    std::cout << imya << ": " << ochko << "\n";
+for (const auto& [name, point] : score) {
+    std::cout << name << ": " << point << "\n";
 }
 ```
 
-🤖 Строчка `for (const auto& [imya, ochko] : ochki)` читается так: «для каждой пары из словаря назови ключ `imya`, а значение `ochko`». Удобно и читаемо! (Это работает в C++17 — помнишь, мы включали его в начале файла?)
+🤖 Строчка `for (const auto& [name, point] : score)` читается так: «для каждой пары из словаря назови ключ `name`, а значение `point`». Удобно и читаемо! (Это работает в C++17 — помнишь, мы включали его в начале файла?)
 
 > Есть ещё `std::unordered_map` — тот же словарь, но **быстрее** ищет (правда, не хранит ключи по порядку). Про разницу — чуть ниже, в части про скорость.
 
@@ -667,16 +667,16 @@ for (const auto& [imya, ochko] : ochki) {
 ```cpp
 #include <set>
 
-std::set<int> chisla;
-chisla.insert(3);
-chisla.insert(1);
-chisla.insert(3);   // повтор — не добавится
+std::set<int> numbers;
+numbers.insert(3);
+numbers.insert(1);
+numbers.insert(3);   // повтор — не добавится
 
 // в множестве сейчас: {1, 3} — без повторов и по возрастанию
-for (int n : chisla) std::cout << n << " ";    // 1 3
+for (int n : numbers) std::cout << n << " ";    // 1 3
 
 // проверить, есть ли элемент:
-if (chisla.count(3) > 0) std::cout << "3 est!";
+if (numbers.count(3) > 0) std::cout << "3 exists!";
 ```
 
 🤖 `set` сам выкидывает повторы и держит элементы по порядку. Идеально для «уникальных» вещей.
@@ -687,8 +687,8 @@ if (chisla.count(3) > 0) std::cout << "3 est!";
 
 ```cpp
 #include <utility>
-std::pair<std::string, int> igrok{"Bob", 100};
-std::cout << igrok.first << " - " << igrok.second;   // Bob - 100
+std::pair<std::string, int> player{"Bob", 100};
+std::cout << player.first << " - " << player.second;   // Bob - 100
 ```
 
 🤖 `first` и `second` — две части пары. `map` внутри как раз состоит из таких пар. Когда нужно вернуть из функции **два** значения сразу — `pair` выручает.
@@ -771,19 +771,19 @@ int main() {
 
     // найти элемент:
     auto it = std::find(v.begin(), v.end(), 8);
-    bool nashli = (it != v.end());            // true — 8 есть
+    bool found = (it != v.end());             // true — 8 есть
 
     // посчитать, сколько раз встречается:
-    int skolko = std::count(v.begin(), v.end(), 5);   // 1
+    int howMany = std::count(v.begin(), v.end(), 5);   // 1
 
     // найти максимум и минимум:
     auto maxIt = std::max_element(v.begin(), v.end()); // *maxIt == 9
     auto minIt = std::min_element(v.begin(), v.end()); // *minIt == 1
 
     // сумма всех элементов:
-    int summa = std::accumulate(v.begin(), v.end(), 0); // 25
+    int sum = std::accumulate(v.begin(), v.end(), 0); // 25
 
-    std::cout << "Max: " << *maxIt << ", summa: " << summa << "\n";
+    std::cout << "Max: " << *maxIt << ", sum: " << sum << "\n";
 }
 ```
 
@@ -877,9 +877,9 @@ std::cout << maximum('a', 'z') << "\n";   // T = char   -> z
 🧠 Вспомни Часть F:
 
 ```cpp
-std::vector<int>            chisla;   // вектор ИНТов
-std::vector<std::string>    slova;    // вектор СТРОК
-std::map<std::string, int>  schyot;   // словарь строка -> инт
+std::vector<int>            numbers;  // вектор ИНТов
+std::vector<std::string>    words;    // вектор СТРОК
+std::map<std::string, int>  score;    // словарь строка -> инт
 ```
 
 Те самые **угловые скобки `< >`** — это и есть шаблоны! `std::vector` — шаблон класса, а `<int>` говорит ему: «храни int». Один и тот же `vector` умеет хранить что угодно именно потому, что он **шаблонный**.
@@ -892,24 +892,24 @@ std::map<std::string, int>  schyot;   // словарь строка -> инт
 
 ```cpp
 template <typename T>
-class Korobka {
+class Box {
 public:
-    Korobka(T znachenie) : znachenie_{znachenie} {}
-    T    poluchit() const     { return znachenie_; }
-    void polozhit(T novoe)    { znachenie_ = novoe; }
+    Box(T value) : value_{value} {}
+    T    get() const          { return value_; }
+    void put(T newValue)      { value_ = newValue; }
 private:
-    T znachenie_;
+    T value_;
 };
 ```
 
 Используем с разными типами:
 
 ```cpp
-Korobka<int>         k1{42};
-Korobka<std::string> k2{"S3CRET"};
+Box<int>         k1{42};
+Box<std::string> k2{"S3CRET"};
 
-std::cout << k1.poluchit() << "\n";   // 42
-std::cout << k2.poluchit() << "\n";   // S3CRET
+std::cout << k1.get() << "\n";   // 42
+std::cout << k2.get() << "\n";   // S3CRET
 ```
 
 🤖 Одна «коробка» — и для чисел, и для строк, и для чего угодно. Примерно так (только намного умнее) и сделан `std::vector`.
@@ -920,12 +920,12 @@ std::cout << k2.poluchit() << "\n";   // S3CRET
 
 ```cpp
 template <typename A, typename B>
-void pokazhi_paru(A pervoe, B vtoroe) {
-    std::cout << pervoe << " : " << vtoroe << "\n";
+void showPair(A first, B second) {
+    std::cout << first << " : " << second << "\n";
 }
 
-pokazhi_paru("port", 443);       // строка и int    -> port : 443
-pokazhi_paru("ip", "10.0.0.1");  // строка и строка -> ip : 10.0.0.1
+showPair("port", 443);       // строка и int    -> port : 443
+showPair("ip", "10.0.0.1");  // строка и строка -> ip : 10.0.0.1
 ```
 
 🤖 Именно так устроены `std::pair<A, B>` (пара) и `std::map<K, V>` (ключ K → значение V) — у них по два типа-параметра.
@@ -938,7 +938,7 @@ pokazhi_paru("ip", "10.0.0.1");  // строка и строка -> ip : 10.0.0.
 
 🎯 **Попробуй сам:**
 1. Напиши шаблонную функцию `summa(T a, T b)`, которая возвращает `a + b`. Проверь на `int` и на `double`.
-2. Заведи `Korobka<int>`, положи число, поменяй его через `polozhit`, выведи.
+2. Заведи `Box<int>`, положи число, поменяй его через `put`, выведи.
 3. Подумай: почему `std::vector<int>` и `std::vector<double>` — это «один шаблон, два разных типа»?
 
 ---
@@ -954,14 +954,14 @@ pokazhi_paru("ip", "10.0.0.1");  // строка и строка -> ip : 10.0.0.
 #include <algorithm>
 
 // свой тип данных: одна строчка таблицы рекордов
-struct Rekord {
-    std::string imya;
-    int ochki{0};      // инициализирован — никакого мусора (Правило №1)
+struct Record {
+    std::string name;
+    int score{0};      // инициализирован — никакого мусора (Правило №1)
 };
 
 int main() {
     // вектор структур — наша таблица
-    std::vector<Rekord> tablica{
+    std::vector<Record> table{
         {"Bob", 120},
         {"Anna", 200},
         {"Igor", 90},
@@ -969,16 +969,16 @@ int main() {
     };
 
     // сортируем по убыванию очков (алгоритм + лямбда):
-    std::sort(tablica.begin(), tablica.end(),
-              [](const Rekord& a, const Rekord& b) {   // const& — не копируем (Правило №3)
-                  return a.ochki > b.ochki;
+    std::sort(table.begin(), table.end(),
+              [](const Record& a, const Record& b) {   // const& — не копируем (Правило №3)
+                  return a.score > b.score;
               });
 
-    std::cout << "=== TABLICA REKORDOV ===\n";
-    int mesto{1};
-    for (const Rekord& r : tablica) {     // range-for + const&
-        std::cout << mesto << ". " << r.imya << " - " << r.ochki << "\n";
-        ++mesto;
+    std::cout << "=== RECORDS TABLE ===\n";
+    int place{1};
+    for (const Record& r : table) {       // range-for + const&
+        std::cout << place << ". " << r.name << " - " << r.score << "\n";
+        ++place;
     }
     return 0;
 }
@@ -986,7 +986,7 @@ int main() {
 
 Вывод:
 ```
-=== TABLICA REKORDOV ===
+=== RECORDS TABLE ===
 1. Anna - 200
 2. Sveta - 200
 3. Bob - 120

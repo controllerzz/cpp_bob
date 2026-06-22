@@ -36,9 +36,9 @@
 #include <cstdio>
 
 // ⚠️ ПЛОХО: закрываем файл вручную
-void plokho(bool oshibka) {
+void bad(bool error) {
     std::FILE* f = std::fopen("log.txt", "w");   // взяли ресурс
-    if (oshibka) {
+    if (error) {
         return;                 // 💥 вышли и ЗАБЫЛИ fclose(f) -> файл остался открыт (утечка!)
     }
     std::fclose(f);             // закрываем только если дошли сюда
@@ -60,31 +60,31 @@ void plokho(bool oshibka) {
 ```cpp
 #include <iostream>
 
-class Podyemnik {                 // ресурс — «поднятое» состояние
+class CarLift {                 // ресурс — «поднятое» состояние
 public:
-    Podyemnik()  { std::cout << "Podyemnik PODNYAT\n"; }     // ВЗЯЛИ ресурс
-    ~Podyemnik() { std::cout << "Podyemnik OPUSCHEN\n"; }    // ВЕРНУЛИ ресурс
-    void rabota() const { std::cout << "  remontiruem mashinu\n"; }
+    CarLift()  { std::cout << "CarLift RAISED\n"; }     // ВЗЯЛИ ресурс
+    ~CarLift() { std::cout << "CarLift LOWERED\n"; }    // ВЕРНУЛИ ресурс
+    void work() const { std::cout << "  repairing the car\n"; }
 };
 
-void osmotr() {
-    Podyemnik p;        // подняли
-    p.rabota();
+void inspect() {
+    CarLift p;          // подняли
+    p.work();
 }                       // вышли -> деструктор -> опустили САМ
 
 int main() {
-    osmotr();
+    inspect();
 }
 ```
 
 **Ожидаемый вывод:**
 ```
-Podyemnik PODNYAT
-  remontiruem mashinu
-Podyemnik OPUSCHEN
+CarLift RAISED
+  repairing the car
+CarLift LOWERED
 ```
 
-🤖 Мы **нигде не писали «опусти подъёмник»** — он опустился сам, в деструкторе. И опустится, даже если в `osmotr` будет `return` посередине или случится ошибка. Забыть невозможно.
+🤖 Мы **нигде не писали «опусти подъёмник»** — он опустился сам, в деструкторе. И опустится, даже если в `inspect` будет `return` посередине или случится ошибка. Забыть невозможно.
 
 ## Урок 3.2. Реальный пример — обёртка над файлом
 
@@ -94,34 +94,34 @@ Podyemnik OPUSCHEN
 #include <cstdio>      // FILE*, fopen, fclose, fprintf
 #include <iostream>
 
-class FaylLog {
+class FileLog {
 public:
-    FaylLog(const char* imya) {
-        f_ = std::fopen(imya, "w");      // ВЫДЕЛЯЕМ ресурс: открыли файл
-        std::cout << "fayl otkryt\n";
+    FileLog(const char* name) {
+        f_ = std::fopen(name, "w");      // ВЫДЕЛЯЕМ ресурс: открыли файл
+        std::cout << "file opened\n";
     }
-    ~FaylLog() {
+    ~FileLog() {
         if (f_) std::fclose(f_);         // ОСВОБОЖДАЕМ ресурс: закрыли файл
-        std::cout << "fayl zakryt\n";
+        std::cout << "file closed\n";
     }
-    void zapisat(const char* tekst) {
-        if (f_) std::fprintf(f_, "%s\n", tekst);
+    void write(const char* text) {
+        if (f_) std::fprintf(f_, "%s\n", text);
     }
 private:
     std::FILE* f_ = nullptr;             // сам ресурс (дескриптор файла)
 };
 
 int main() {
-    FaylLog log{"log.txt"};
-    log.zapisat("scan started");
-    log.zapisat("port 80 open");
+    FileLog log{"log.txt"};
+    log.write("scan started");
+    log.write("port 80 open");
 }   // файл закроется САМ — даже если что-то пойдёт не так
 ```
 
 **Ожидаемый вывод:**
 ```
-fayl otkryt
-fayl zakryt
+file opened
+file closed
 ```
 А рядом появится файл `log.txt` с двумя строчками внутри — **открой и проверь**.
 
@@ -137,8 +137,8 @@ fayl zakryt
 🧠 Вот тут RAII чаще всего делают **неправильно**. Что будет, если такой объект **скопировать**?
 
 ```cpp
-FaylLog a{"log.txt"};
-FaylLog b = a;          // ⚠️ скопировался указатель f_ -> ДВА объекта на ОДИН файл!
+FileLog a{"log.txt"};
+FileLog b = a;          // ⚠️ скопировался указатель f_ -> ДВА объекта на ОДИН файл!
 ```
 
 🤖 По умолчанию копия просто копирует поле `f_` — теперь `a` и `b` держат **один и тот же** файл. А в конце **оба** деструктора вызовут `fclose(f_)` — файл закроется **дважды**. Это **двойное освобождение** (*double-free* / *double-close*) — серьёзная ошибка, программа может упасть.
@@ -148,19 +148,19 @@ FaylLog b = a;          // ⚠️ скопировался указатель f_
 ✅ **Правило трёх/пяти:** если класс **владеет ресурсом** (у него есть деструктор, который что-то освобождает), то нужно решить и про **копирование**. Самый простой правильный путь для новичка — **запретить копирование**:
 
 ```cpp
-class FaylLog {
+class FileLog {
 public:
-    FaylLog(const char* imya) { f_ = std::fopen(imya, "w"); }
-    ~FaylLog() { if (f_) std::fclose(f_); }
+    FileLog(const char* name) { f_ = std::fopen(name, "w"); }
+    ~FileLog() { if (f_) std::fclose(f_); }
 
-    FaylLog(const FaylLog&)            = delete;   // запретить копирование
-    FaylLog& operator=(const FaylLog&) = delete;
+    FileLog(const FileLog&)            = delete;   // запретить копирование
+    FileLog& operator=(const FileLog&) = delete;
 private:
     std::FILE* f_ = nullptr;
 };
 ```
 
-🤖 Теперь `FaylLog b = a;` **не скомпилируется** — ошибка поймана заранее, бага нет. Именно так устроен `std::unique_ptr`: его **нельзя копировать**, только **передавать владение** (move). Передача владения (move) — это «следующий шаг»; разберём подробно, когда будем дорабатывать.
+🤖 Теперь `FileLog b = a;` **не скомпилируется** — ошибка поймана заранее, бага нет. Именно так устроен `std::unique_ptr`: его **нельзя копировать**, только **передавать владение** (move). Передача владения (move) — это «следующий шаг»; разберём подробно, когда будем дорабатывать.
 
 ⚠️ Запомни связь: **есть деструктор, освобождающий ресурс → подумай про копирование** (запрети его или сделай move). Иначе — двойное освобождение.
 
@@ -213,26 +213,26 @@ private:
 
 class ScopeGuard {
 public:
-    ScopeGuard(std::function<void()> deystvie) : deystvie_{deystvie} {}
-    ~ScopeGuard() { deystvie_(); }              // на выходе — выполнить уборку
+    ScopeGuard(std::function<void()> action) : action_{action} {}
+    ~ScopeGuard() { action_(); }                // на выходе — выполнить уборку
     ScopeGuard(const ScopeGuard&)            = delete;   // не копируется (Часть 4!)
     ScopeGuard& operator=(const ScopeGuard&) = delete;
 private:
-    std::function<void()> deystvie_;
+    std::function<void()> action_;
 };
 
 int main() {
-    std::cout << "vhodim\n";
-    ScopeGuard guard{[]{ std::cout << "ubiraem za soboy!\n"; }};
-    std::cout << "rabotaem\n";
+    std::cout << "entering\n";
+    ScopeGuard guard{[]{ std::cout << "cleaning up!\n"; }};
+    std::cout << "working\n";
 }   // здесь guard уничтожается -> вызывает лямбду-уборку
 ```
 
 **Ожидаемый вывод:**
 ```
-vhodim
-rabotaem
-ubiraem za soboy!
+entering
+working
+cleaning up!
 ```
 
 🤖 `guard` хранит лямбду; на выходе из `main` его деструктор её вызывает. Заметь `= delete` — тот самый запрет копирования из Части 4 (владелец уборки не должен копироваться).
@@ -247,7 +247,7 @@ ubiraem za soboy!
 ```cpp
 #include <cstdio>
 std::FILE* f = std::fopen("log.txt", "w");
-ScopeGuard zakroem{[&]{ if (f) std::fclose(f); }};   // закроется само на выходе
+ScopeGuard logGuard{[&]{ if (f) std::fclose(f); }};   // закроется само на выходе
 
 std::fprintf(f, "scan started\n");
 // ...даже при раннем return или ошибке файл закроется — спасибо scope guard

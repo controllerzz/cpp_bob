@@ -31,35 +31,35 @@
 #include <iostream>
 #include <stdexcept>
 
-int delenie(int a, int b) {
+int divide(int a, int b) {
     if (b == 0) {
-        throw std::runtime_error("delenie na nol!");   // не можем -> кидаем ошибку
+        throw std::runtime_error("division by zero!");   // не можем -> кидаем ошибку
     }
     return a / b;
 }
 
 int main() {
     try {
-        std::cout << delenie(10, 2) << "\n";   // 5
-        std::cout << delenie(7, 0) << "\n";    // тут вылетит ошибка
-        std::cout << "eta stroka ne vypolnitsya\n";
+        std::cout << divide(10, 2) << "\n";   // 5
+        std::cout << divide(7, 0) << "\n";    // тут вылетит ошибка
+        std::cout << "this line won't run\n";
     } catch (const std::exception& e) {
-        std::cout << "Poymali oshibku: " << e.what() << "\n";
+        std::cout << "Caught an error: " << e.what() << "\n";
     }
-    std::cout << "Programma prodolzhaet rabotat\n";
+    std::cout << "Program keeps running\n";
 }
 ```
 
 **Ожидаемый вывод:**
 ```
 5
-Poymali oshibku: delenie na nol!
-Programma prodolzhaet rabotat
+Caught an error: division by zero!
+Program keeps running
 ```
 
 🤖 Что произошло:
-- `delenie(10, 2)` отработал нормально → `5`;
-- `delenie(7, 0)` нажал «аварийную кнопку» (`throw`) → выполнение **выпрыгнуло** из `try`, строчка `"eta stroka..."` **пропущена**;
+- `divide(10, 2)` отработал нормально → `5`;
+- `divide(7, 0)` нажал «аварийную кнопку» (`throw`) → выполнение **выпрыгнуло** из `try`, строчка `"this line won't run"` **пропущена**;
 - управление прыгнуло в `catch`, там напечатали сообщение;
 - после `try/catch` программа **спокойно продолжила** работу (не упала!).
 
@@ -91,7 +91,7 @@ int main() {
     try {
         std::cout << v.at(5) << "\n";          // ⛔ элемента №5 нет -> бросок!
     } catch (const std::out_of_range& e) {
-        std::cout << "Vyhod za granitsu: " << e.what() << "\n";
+        std::cout << "Out of range: " << e.what() << "\n";
     }
 }
 ```

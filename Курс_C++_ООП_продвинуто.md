@@ -40,39 +40,39 @@
 #include <iostream>
 #include <string>
 
-class Transport {
+class Vehicle {
 public:
-    Transport(std::string n) : nazvanie_{n} {}
-    void info() const { std::cout << nazvanie_; }      // 🎚️ АБСТРАКЦИЯ: простой «пульт» наружу
-    virtual void signal() const { std::cout << ": bip\n"; }   // 📢 ПОЛИМОРФИЗМ: можно переопределить
-    virtual ~Transport() = default;
+    Vehicle(std::string n) : name_{n} {}
+    void info() const { std::cout << name_; }      // 🎚️ АБСТРАКЦИЯ: простой «пульт» наружу
+    virtual void signal() const { std::cout << ": beep\n"; }   // 📢 ПОЛИМОРФИЗМ: можно переопределить
+    virtual ~Vehicle() = default;
 protected:
-    std::string nazvanie_;
+    std::string name_;
 private:
-    int sekretnyy_kod_ = 1234;     // 🔒 ИНКАПСУЛЯЦИЯ: спрятано, снаружи не достать
+    int secretCode_ = 1234;     // 🔒 ИНКАПСУЛЯЦИЯ: спрятано, снаружи не достать
 };
 
-class Mashina : public Transport {           // 🌳 НАСЛЕДОВАНИЕ: машина это транспорт
+class Car : public Vehicle {           // 🌳 НАСЛЕДОВАНИЕ: машина это транспорт
 public:
-    Mashina(std::string n) : Transport{n} {}
+    Car(std::string n) : Vehicle{n} {}
     void signal() const override {           // 📢 своё поведение
-        info(); std::cout << ": BIIIP (klakson)\n";
+        info(); std::cout << ": BEEEP (horn)\n";
     }
 };
 
 int main() {
-    Mashina m{"Sedan"};
-    m.signal();          // зовём как у базы — а работает версия Mashina
-    // m.sekretnyy_kod_ = 0;   // ⛔ нельзя: поле private (инкапсуляция защитила)
+    Car m{"Sedan"};
+    m.signal();          // зовём как у базы — а работает версия Car
+    // m.secretCode_ = 0;   // ⛔ нельзя: поле private (инкапсуляция защитила)
 }
 ```
 
 **Ожидаемый вывод:**
 ```
-Sedan: BIIIP (klakson)
+Sedan: BEEEP (horn)
 ```
 
-🤖 В этих ~20 строках живут все четыре кита: простой метод наружу (абстракция), спрятанное поле (инкапсуляция), `Mashina : public Transport` (наследование) и `override` своего `signal()` (полиморфизм). Дальше в файле разберём наследование и полиморфизм подробно и с проверяемыми примерами.
+🤖 В этих ~20 строках живут все четыре кита: простой метод наружу (абстракция), спрятанное поле (инкапсуляция), `Car : public Vehicle` (наследование) и `override` своего `signal()` (полиморфизм). Дальше в файле разберём наследование и полиморфизм подробно и с проверяемыми примерами.
 
 ## Где какой кит разобран подробно
 
@@ -98,35 +98,35 @@ Sedan: BIIIP (klakson)
 #include <string>
 
 // БАЗА: любой транспорт
-class Transport {
+class Vehicle {
 public:
-    Transport(std::string nazvanie, int kolesa)
-        : nazvanie_{nazvanie}, kolesa_{kolesa} {}
+    Vehicle(std::string name, int wheels)
+        : name_{name}, wheels_{wheels} {}
 
     void info() const {                      // общий метод — напишем 1 раз
-        std::cout << nazvanie_ << ": koles " << kolesa_ << "\n";
+        std::cout << name_ << ": wheels " << wheels_ << "\n";
     }
 protected:                                   // protected — видно потомкам
-    std::string nazvanie_;
-    int kolesa_;
+    std::string name_;
+    int wheels_;
 };
 
 // ПОТОМОК: машина — это транспорт
-class Mashina : public Transport {
+class Car : public Vehicle {
 public:
-    Mashina(std::string nazvanie)
-        : Transport{nazvanie, 4} {}          // вызываем конструктор базы
+    Car(std::string name)
+        : Vehicle{name, 4} {}                // вызываем конструктор базы
 };
 
-class Motocikl : public Transport {
+class Motorcycle : public Vehicle {
 public:
-    Motocikl(std::string nazvanie)
-        : Transport{nazvanie, 2} {}
+    Motorcycle(std::string name)
+        : Vehicle{name, 2} {}
 };
 
 int main() {
-    Mashina  m{"Sedan"};
-    Motocikl mc{"Sport"};
+    Car  m{"Sedan"};
+    Motorcycle mc{"Sport"};
     m.info();      // info() унаследован от базы!
     mc.info();
 }
@@ -134,13 +134,13 @@ int main() {
 
 **Ожидаемый вывод:**
 ```
-Sedan: koles 4
-Sport: koles 2
+Sedan: wheels 4
+Sport: wheels 2
 ```
 
 🤖 Разбор:
-- `class Mashina : public Transport` — «Mashina наследует от Transport».
-- `: Transport{nazvanie, 4}` — потомок обязан **запустить конструктор базы** (у базы нет конструктора без аргументов).
+- `class Car : public Vehicle` — «Car наследует от Vehicle».
+- `: Vehicle{name, 4}` — потомок обязан **запустить конструктор базы** (у базы нет конструктора без аргументов).
 - Метод `info()` написан в базе, а работает у всех потомков. Вот оно — переиспользование.
 
 ## Урок 1.2. `public`, `protected`, `private` — кто что видит 🔒
@@ -153,7 +153,7 @@ Sport: koles 2
 | `protected` | **сам класс + потомки** (но не снаружи) |
 | `private` | **только сам класс** (даже потомки не видят) |
 
-🤖 В примере выше `nazvanie_` и `kolesa_` сделаны `protected` — значит, потомки (`Mashina`, `Motocikl`) смогут ими пользоваться, а вот «снаружи» (`m.nazvanie_`) — нельзя. Это инкапсуляция, но «приоткрытая для своих».
+🤖 В примере выше `name_` и `wheels_` сделаны `protected` — значит, потомки (`Car`, `Motorcycle`) смогут ими пользоваться, а вот «снаружи» (`m.name_`) — нельзя. Это инкапсуляция, но «приоткрытая для своих».
 
 ---
 
@@ -164,43 +164,43 @@ Sport: koles 2
 ```cpp
 #include <iostream>
 
-class Dvigatel {                 // двигатель (деталь внутри транспорта)
+class Engine {                 // двигатель (деталь внутри транспорта)
 public:
-    Dvigatel()  { std::cout << "  Dvigatel sobran\n"; }
-    ~Dvigatel() { std::cout << "  Dvigatel razobran\n"; }
+    Engine()  { std::cout << "  Engine assembled\n"; }
+    ~Engine() { std::cout << "  Engine disassembled\n"; }
 };
 
-class Transport {
+class Vehicle {
 public:
-    Transport()  { std::cout << "Transport: rama gotova\n"; }
-    ~Transport() { std::cout << "Transport: rama razobrana\n"; }
+    Vehicle()  { std::cout << "Vehicle: frame ready\n"; }
+    ~Vehicle() { std::cout << "Vehicle: frame disassembled\n"; }
 private:
-    Dvigatel dv_;                // транспорт содержит двигатель
+    Engine dv_;                // транспорт содержит двигатель
 };
 
-class Mashina : public Transport {
+class Car : public Vehicle {
 public:
-    Mashina()  { std::cout << "Mashina: gotova\n"; }
-    ~Mashina() { std::cout << "Mashina: na razbor\n"; }
+    Car()  { std::cout << "Car: ready\n"; }
+    ~Car() { std::cout << "Car: to disassembly\n"; }
 };
 
 int main() {
-    std::cout << "-- sobiraem --\n";
-    Mashina m;
-    std::cout << "-- ezdim --\n";
+    std::cout << "-- assembling --\n";
+    Car m;
+    std::cout << "-- driving --\n";
 }   // здесь m уничтожается
 ```
 
 **Ожидаемый вывод:**
 ```
--- sobiraem --
-  Dvigatel sobran
-Transport: rama gotova
-Mashina: gotova
--- ezdim --
-Mashina: na razbor
-Transport: rama razobrana
-  Dvigatel razobran
+-- assembling --
+  Engine assembled
+Vehicle: frame ready
+Car: ready
+-- driving --
+Car: to disassembly
+Vehicle: frame disassembled
+  Engine disassembled
 ```
 
 🤖 Смотри порядок:
@@ -219,62 +219,62 @@ Transport: rama razobrana
 #include <iostream>
 #include <string>
 
-class Transport {
+class Vehicle {
 public:
-    Transport(std::string n) : nazvanie_{n} {}
+    Vehicle(std::string n) : name_{n} {}
     virtual void signal() const {            // virtual = «потомки могут переопределить»
-        std::cout << nazvanie_ << ": bip!\n";
+        std::cout << name_ << ": beep!\n";
     }
-    virtual ~Transport() = default;          // виртуальный деструктор (см. Часть 4!)
+    virtual ~Vehicle() = default;            // виртуальный деструктор (см. Часть 4!)
 protected:
-    std::string nazvanie_;
+    std::string name_;
 };
 
-class Mashina : public Transport {
+class Car : public Vehicle {
 public:
-    Mashina(std::string n) : Transport{n} {}
+    Car(std::string n) : Vehicle{n} {}
     void signal() const override {           // override = «переопределяю метод базы»
-        std::cout << nazvanie_ << ": BIIIP! (klakson)\n";
+        std::cout << name_ << ": BEEEP! (horn)\n";
     }
 };
 
-class Motocikl : public Transport {
+class Motorcycle : public Vehicle {
 public:
-    Motocikl(std::string n) : Transport{n} {}
+    Motorcycle(std::string n) : Vehicle{n} {}
     void signal() const override {
-        std::cout << nazvanie_ << ": pi-pi! (tonkiy)\n";
+        std::cout << name_ << ": beep-beep! (thin)\n";
     }
 };
 
-void posignalit(const Transport& t) {        // работает с ЛЮБЫМ транспортом
+void honk(const Vehicle& t) {                // работает с ЛЮБЫМ транспортом
     t.signal();                              // вызовется НУЖНАЯ версия!
 }
 
 int main() {
-    Mashina  m{"Sedan"};
-    Motocikl mc{"Sport"};
-    Transport t{"Telega"};
-    posignalit(m);
-    posignalit(mc);
-    posignalit(t);
+    Car  m{"Sedan"};
+    Motorcycle mc{"Sport"};
+    Vehicle t{"Cart"};
+    honk(m);
+    honk(mc);
+    honk(t);
 }
 ```
 
 **Ожидаемый вывод:**
 ```
-Sedan: BIIIP! (klakson)
-Sport: pi-pi! (tonkiy)
-Telega: bip!
+Sedan: BEEEP! (horn)
+Sport: beep-beep! (thin)
+Cart: beep!
 ```
 
-🤖 Магия: функция `posignalit` знает только про базовый `Transport`, но вызывает **правильный** `signal()` для каждого объекта. Это и есть полиморфизм.
+🤖 Магия: функция `honk` знает только про базовый `Vehicle`, но вызывает **правильный** `signal()` для каждого объекта. Это и есть полиморфизм.
 - `virtual` в базе — «разрешаю переопределять».
 - `override` в потомке — «я переопределяю» (и компилятор проверит, что ты не опечатался в имени — это часть **правильности**).
-- Заметь: `Mashina::signal` пользуется `nazvanie_` — это и есть доступ к `protected`-полю базы (Часть 1.2).
+- Заметь: `Car::signal` пользуется `name_` — это и есть доступ к `protected`-полю базы (Часть 1.2).
 
-⚠️ Если убрать `virtual` — `posignalit(m)` всегда вызовет версию **базы** («bip!»), даже для машины. `virtual` включает «выбор по реальному типу».
+⚠️ Если убрать `virtual` — `honk(m)` всегда вызовет версию **базы** («beep»), даже для машины. `virtual` включает «выбор по реальному типу».
 
-🎯 **Попробуй сам:** добавь класс `Gruzovik` со своим сигналом и прогони через `posignalit`. Проверь, что выводится твоя версия.
+🎯 **Попробуй сам:** добавь класс `Truck` со своим сигналом и прогони через `honk`. Проверь, что выводится твоя версия.
 
 ---
 
@@ -286,32 +286,32 @@ Telega: bip!
 #include <iostream>
 #include <memory>
 
-class Transport {
+class Vehicle {
 public:
-    virtual ~Transport() { std::cout << "~Transport\n"; }   // ВИРТУАЛЬНЫЙ
+    virtual ~Vehicle() { std::cout << "~Vehicle\n"; }   // ВИРТУАЛЬНЫЙ
 };
 
-class Mashina : public Transport {
+class Car : public Vehicle {
 public:
-    ~Mashina() override { std::cout << "~Mashina\n"; }
+    ~Car() override { std::cout << "~Car\n"; }
 };
 
 int main() {
-    std::unique_ptr<Transport> t = std::make_unique<Mashina>();  // база указывает на потомка
+    std::unique_ptr<Vehicle> t = std::make_unique<Car>();  // база указывает на потомка
 }   // t уничтожается здесь
 ```
 
 **Ожидаемый вывод (деструктор `virtual`):**
 ```
-~Mashina
-~Transport
+~Car
+~Vehicle
 ```
 
 ⚠️ А теперь **убери слово `virtual`** у `~Transport` и запусти снова. Вывод станет:
 ```
-~Transport
+~Vehicle
 ```
-Деструктор потомка `~Mashina` **не вызвался**! Машина «не разобралась» — а если бы внутри `Mashina` была память/файл/сокет, это была бы **утечка**.
+Деструктор потомка `~Car` **не вызвался**! Машина «не разобралась» — а если бы внутри `Car` была память/файл/сокет, это была бы **утечка**.
 
 ✅ **Правило Боба (железное):** если у класса есть хоть одна `virtual`-функция (значит, его будут использовать через указатель/ссылку на базу) — делай **деструктор `virtual`**. Иначе при удалении через базовый указатель потомок не приберётся за собой.
 
@@ -325,38 +325,38 @@ int main() {
 #include <iostream>
 
 // Абстрактный класс — контракт для любого инструмента
-class Instrument {
+class Tool {
 public:
-    virtual void vklyuchit() const = 0;     // = 0 -> чисто виртуальный, тела нет
-    virtual ~Instrument() = default;
+    virtual void turnOn() const = 0;     // = 0 -> чисто виртуальный, тела нет
+    virtual ~Tool() = default;
 };
 
-class Drel : public Instrument {
+class Drill : public Tool {
 public:
-    void vklyuchit() const override { std::cout << "Drel: zhzhzh, sverlit\n"; }
+    void turnOn() const override { std::cout << "Drill: bzzz, drilling\n"; }
 };
 
-class Pylesos : public Instrument {
+class VacuumCleaner : public Tool {
 public:
-    void vklyuchit() const override { std::cout << "Pylesos: vzhuh, vsasyvaet\n"; }
+    void turnOn() const override { std::cout << "VacuumCleaner: whoosh, sucking\n"; }
 };
 
 int main() {
-    // Instrument i;          // ⛔ ОШИБКА: абстрактный класс нельзя создать
-    Drel d;
-    Pylesos p;
-    d.vklyuchit();
-    p.vklyuchit();
+    // Tool i;          // ⛔ ОШИБКА: абстрактный класс нельзя создать
+    Drill d;
+    VacuumCleaner p;
+    d.turnOn();
+    p.turnOn();
 }
 ```
 
 **Ожидаемый вывод:**
 ```
-Drel: zhzhzh, sverlit
-Pylesos: vzhuh, vsasyvaet
+Drill: bzzz, drilling
+VacuumCleaner: whoosh, sucking
 ```
 
-🤖 `= 0` означает «тела нет, реализуй сам». Каждый потомок **обязан** написать `vklyuchit()`. Такой класс-контракт называют **интерфейсом**. 🔧 Как розетка-стандарт: любой прибор обязан иметь вилку нужной формы, а уж что он делает внутри — его дело.
+🤖 `= 0` означает «тела нет, реализуй сам». Каждый потомок **обязан** написать `turnOn()`. Такой класс-контракт называют **интерфейсом**. 🔧 Как розетка-стандарт: любой прибор обязан иметь вилку нужной формы, а уж что он делает внутри — его дело.
 
 ---
 
@@ -377,37 +377,37 @@ Pylesos: vzhuh, vsasyvaet
 #include <memory>
 #include <string>
 
-class Pribor {                   // дорогой диагностический прибор в гараже
+class Device {                   // дорогой диагностический прибор в гараже
 public:
-    Pribor(std::string n) : n_{n} { std::cout << n_ << " kuplen\n"; }
-    ~Pribor()                      { std::cout << n_ << " spisan\n"; }
-    void use() const               { std::cout << n_ << " ispolzuetsya\n"; }
+    Device(std::string n) : n_{n} { std::cout << n_ << " bought\n"; }
+    ~Device()                      { std::cout << n_ << " written off\n"; }
+    void use() const               { std::cout << n_ << " in use\n"; }
 private:
     std::string n_;
 };
 
 int main() {
-    std::shared_ptr<Pribor> mehanik1 = std::make_shared<Pribor>("Skaner");
-    std::cout << "vladeltsev: " << mehanik1.use_count() << "\n";
+    std::shared_ptr<Device> mechanic1 = std::make_shared<Device>("Scanner");
+    std::cout << "owners: " << mechanic1.use_count() << "\n";
 
     {
-        std::shared_ptr<Pribor> mehanik2 = mehanik1;   // второй механик берёт тот же прибор
-        std::cout << "vladeltsev: " << mehanik1.use_count() << "\n";
-        mehanik2->use();
-    }   // mehanik2 ушёл -> хозяев снова 1
+        std::shared_ptr<Device> mechanic2 = mechanic1;   // второй механик берёт тот же прибор
+        std::cout << "owners: " << mechanic1.use_count() << "\n";
+        mechanic2->use();
+    }   // mechanic2 ушёл -> хозяев снова 1
 
-    std::cout << "vladeltsev: " << mehanik1.use_count() << "\n";
+    std::cout << "owners: " << mechanic1.use_count() << "\n";
 }   // ушёл последний хозяин -> прибор спишут
 ```
 
 **Ожидаемый вывод:**
 ```
-Skaner kuplen
-vladeltsev: 1
-vladeltsev: 2
-Skaner ispolzuetsya
-vladeltsev: 1
-Skaner spisan
+Scanner bought
+owners: 1
+owners: 2
+Scanner in use
+owners: 1
+Scanner written off
 ```
 
 🔧 Образ: один дорогой сканер на гараж, им пользуются несколько механиков. Пока хоть кто-то держит его — он жив. Списывают, только когда **последний** отпустил.
@@ -441,35 +441,35 @@ Skaner spisan
 #include <vector>
 #include <string>
 
-class Transport {
+class Vehicle {
 public:
-    Transport(std::string n) : n_{n} {}
-    virtual void signal() const { std::cout << n_ << ": bip\n"; }
-    virtual ~Transport() = default;          // virtual деструктор — обязательно!
+    Vehicle(std::string n) : n_{n} {}
+    virtual void signal() const { std::cout << n_ << ": beep\n"; }
+    virtual ~Vehicle() = default;            // virtual деструктор — обязательно!
 protected:
     std::string n_;
 };
 
-class Mashina : public Transport {
+class Car : public Vehicle {
 public:
-    Mashina(std::string n) : Transport{n} {}
-    void signal() const override { std::cout << n_ << ": BIIIP\n"; }
+    Car(std::string n) : Vehicle{n} {}
+    void signal() const override { std::cout << n_ << ": BEEEP\n"; }
 };
 
-class Motocikl : public Transport {
+class Motorcycle : public Vehicle {
 public:
-    Motocikl(std::string n) : Transport{n} {}
-    void signal() const override { std::cout << n_ << ": pi-pi\n"; }
+    Motorcycle(std::string n) : Vehicle{n} {}
+    void signal() const override { std::cout << n_ << ": beep-beep\n"; }
 };
 
 int main() {
     // ГАРАЖ: список разного транспорта (умные указатели на базу)
-    std::vector<std::unique_ptr<Transport>> garazh;
-    garazh.push_back(std::make_unique<Mashina>("Sedan"));
-    garazh.push_back(std::make_unique<Motocikl>("Sport"));
-    garazh.push_back(std::make_unique<Mashina>("Pickup"));
+    std::vector<std::unique_ptr<Vehicle>> garage;
+    garage.push_back(std::make_unique<Car>("Sedan"));
+    garage.push_back(std::make_unique<Motorcycle>("Sport"));
+    garage.push_back(std::make_unique<Car>("Pickup"));
 
-    for (const auto& t : garazh) {
+    for (const auto& t : garage) {
         t->signal();         // каждый сигналит ПО-СВОЕМУ
     }
 }   // весь гараж сам уберётся: unique_ptr + virtual destructor
@@ -477,19 +477,19 @@ int main() {
 
 **Ожидаемый вывод:**
 ```
-Sedan: BIIIP
-Sport: pi-pi
-Pickup: BIIIP
+Sedan: BEEEP
+Sport: beep-beep
+Pickup: BEEEP
 ```
 
 🤖 Здесь сошлось всё, чему мы учились:
-- **наследование** — `Mashina`/`Motocikl` от `Transport`;
+- **наследование** — `Car`/`Motorcycle` от `Vehicle`;
 - **полиморфизм** — `t->signal()` зовёт нужную версию;
 - **умные указатели** — `unique_ptr` сам всё уберёт;
 - **виртуальный деструктор** — потомки правильно разберутся;
 - **контейнер** — `vector` хранит разнородный транспорт.
 
-🎯 **Попробуй сам:** добавь класс `Velosiped` (сигнал «дзынь») и положи его в гараж. Запусти — убедись, что он сигналит по-своему.
+🎯 **Попробуй сам:** добавь класс `Bicycle` (сигнал «дзынь») и положи его в гараж. Запусти — убедись, что он сигналит по-своему.
 
 ---
 

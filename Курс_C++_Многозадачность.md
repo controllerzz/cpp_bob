@@ -42,11 +42,11 @@
 
 ```
    ПРОЦЕСС (один цех)
-   ┌───────────────────────────────────────┐
+   ┌──────────────────────────────────────┐
    │  общий склад: КОД · СТАТИКА · КУЧА    │  ← делят все потоки
-   ├───────────────┬───────────┬───────────┤
+   ├───────────────┬───────────┬──────────┤
    │ стек потока 1 │ стек пот.2│ стек пот.3│  ← у каждого свой
-   └───────────────┴───────────┴───────────┘
+   └───────────────┴───────────┴──────────┘
 ```
 
 🤖 Отсюда сразу два вывода:
@@ -75,24 +75,24 @@
 #include <iostream>
 #include <thread>
 
-void rabota(int nomer) {
-    std::cout << "Potok " << nomer << " rabotaet\n";
+void work(int number) {
+    std::cout << "Thread " << number << " works\n";
 }
 
 int main() {
-    std::thread t1(rabota, 1);   // запустили работника 1
-    std::thread t2(rabota, 2);   // запустили работника 2
+    std::thread t1(work, 1);   // запустили работника 1
+    std::thread t2(work, 2);   // запустили работника 2
 
     t1.join();                   // дождаться, пока работник 1 закончит
     t2.join();                   // дождаться работника 2
 
-    std::cout << "Vse gotovo\n";
+    std::cout << "All done\n";
 }
 ```
 
 🤖 `join()` — «подожди этот поток». Без него `main` мог бы закончиться раньше работников, и программа упала бы.
 
-⚠️ Запусти несколько раз — увидишь, что строчки иногда **перемешиваются** (`Potok 2` раньше `Potok 1`). Это нормально: потоки идут одновременно, и порядок не гарантирован. А ещё это **первый намёк на проблему** из Части 3.
+⚠️ Запусти несколько раз — увидишь, что строчки иногда **перемешиваются** (`Thread 2` раньше `Thread 1`). Это нормально: потоки идут одновременно, и порядок не гарантирован. А ещё это **первый намёк на проблему** из Части 3.
 
 🛠 **Про `.pro`:** на Windows (MinGW) обычно ничего дополнительно не нужно, только `CONFIG += c++17`. На Linux добавь `QMAKE_CXXFLAGS += -pthread` и `LIBS += -pthread`.
 
@@ -112,25 +112,25 @@ int main() {
 #include <iostream>
 #include <thread>
 
-int schyot = 0;          // ОБЩАЯ переменная
+int counter = 0;          // ОБЩАЯ переменная
 
-void dobavit() {
+void add() {
     for (int i = 0; i < 100000; ++i) {
-        ++schyot;        // ⚠️ оба потока трогают одно и то же!
+        ++counter;        // ⚠️ оба потока трогают одно и то же!
     }
 }
 
 int main() {
-    std::thread t1(dobavit);
-    std::thread t2(dobavit);
+    std::thread t1(add);
+    std::thread t2(add);
     t1.join();
     t2.join();
-    std::cout << "Ozhidali 200000, poluchili: " << schyot << "\n";
+    std::cout << "Expected 200000, got: " << counter << "\n";
     // часто получится МЕНЬШЕ 200000!
 }
 ```
 
-🤖 Почему не 200000? Потому что `++schyot` — это на самом деле **три действия**: «прочитай число → прибавь 1 → запиши обратно». Если два потока делают это вперемешку, они затирают работу друг друга.
+🤖 Почему не 200000? Потому что `++counter` — это на самом деле **три действия**: «прочитай число → прибавь 1 → запиши обратно». Если два потока делают это вперемешку, они затирают работу друг друга.
 
 🏭 Технический образ: два рабочих записывают новое число в **один журнал**. Оба прочитали «5», оба написали «6» — а должно было стать «7». Один результат потерялся. Это называется **гонка** (*race condition*).
 
@@ -151,22 +151,22 @@ int main() {
 #include <thread>
 #include <mutex>
 
-int schyot = 0;
+int counter = 0;
 std::mutex m;            // наш «жезл»
 
-void dobavit() {
+void add() {
     for (int i = 0; i < 100000; ++i) {
-        std::lock_guard<std::mutex> zamok(m);  // взять жезл
-        ++schyot;                              // теперь трогаем безопасно
+        std::lock_guard<std::mutex> lock(m);  // взять жезл
+        ++counter;                             // теперь трогаем безопасно
     }                                          // выйдя из { } — жезл сам вернётся
 }
 
 int main() {
-    std::thread t1(dobavit);
-    std::thread t2(dobavit);
+    std::thread t1(add);
+    std::thread t2(add);
     t1.join();
     t2.join();
-    std::cout << "Poluchili: " << schyot << "\n";   // теперь ВСЕГДА 200000
+    std::cout << "Got: " << counter << "\n";   // теперь ВСЕГДА 200000
 }
 ```
 
@@ -194,21 +194,21 @@ int main() {
 #include <queue>
 #include <mutex>
 
-std::queue<int> zadachi;     // общая очередь заданий
+std::queue<int> tasks;     // общая очередь заданий
 std::mutex m;
 
 // ПРОИЗВОДИТЕЛЬ (один поток) кладёт задание:
-void polozhit(int z) {
-    std::lock_guard<std::mutex> zamok(m);
-    zadachi.push(z);
+void push(int task) {
+    std::lock_guard<std::mutex> lock(m);
+    tasks.push(task);
 }
 
 // ПОТРЕБИТЕЛЬ (другой поток) забирает задание:
-bool vzyat(int& kuda) {
-    std::lock_guard<std::mutex> zamok(m);
-    if (zadachi.empty()) return false;
-    kuda = zadachi.front();
-    zadachi.pop();
+bool take(int& dst) {
+    std::lock_guard<std::mutex> lock(m);
+    if (tasks.empty()) return false;
+    dst = tasks.front();
+    tasks.pop();
     return true;
 }
 ```
@@ -252,8 +252,8 @@ QProcess p;
 p.start("ping", QStringList() << "-n" << "1" << "127.0.0.1");  // -n для Windows
 p.waitForFinished();
 
-QString vyvod = p.readAllStandardOutput();   // получили вывод чужой программы!
-qDebug() << vyvod;
+QString output = p.readAllStandardOutput();   // получили вывод чужой программы!
+qDebug() << output;
 ```
 
 🤖 Наша программа запустила `ping`, дождалась его и забрала результат. Это и есть «два процесса поговорили». (Помнишь, в сканере сети я обещал показать `ping` через `QProcess`? Вот он.)

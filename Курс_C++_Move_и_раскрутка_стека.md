@@ -17,7 +17,7 @@
 
 ## Урок 1.1. Что это такое
 
-🧠 Помнишь стек вызовов (из «Под капотом»)? Функции вызывают друг друга, и у каждой свой «кадр» с локальными объектами: `main` → `rabota` → `glubzhe` …
+🧠 Помнишь стек вызовов (из «Под капотом»)? Функции вызывают друг друга, и у каждой свой «кадр» с локальными объектами: `main` → `work` → `deeper` …
 
 Теперь представь, что глубоко внутри случилась **ошибка** и программа «кинула исключение» (`throw` — крикнула «авария!»). Программа бросает обычную работу и начинает **карабкаться вверх по стеку** обратно к тому, кто умеет ошибку обработать (`catch`). И вот самое важное: **поднимаясь, она уничтожает все локальные объекты** на своём пути — вызывает их **деструкторы**. Этот «подъём с уборкой» и называется **раскрутка стека**.
 
@@ -35,47 +35,47 @@
 #include <string>
 #include <stdexcept>
 
-struct Resurs {
-    std::string imya;
-    Resurs(std::string n) : imya{n} { std::cout << imya << " vzyat\n"; }
-    ~Resurs() { std::cout << imya << " osvobozhdyon\n"; }   // сработает при раскрутке!
+struct Resource {
+    std::string name;
+    Resource(std::string n) : name{n} { std::cout << name << " taken\n"; }
+    ~Resource() { std::cout << name << " freed\n"; }   // сработает при раскрутке!
 };
 
-void glubzhe() {
-    Resurs r{"B"};
-    std::cout << "brosaem oshibku!\n";
-    throw std::runtime_error("polomka");          // кидаем исключение
-    std::cout << "eto ne vypolnitsya\n";          // сюда уже не дойдём
+void deeper() {
+    Resource r{"B"};
+    std::cout << "throwing an error!\n";
+    throw std::runtime_error("breakdown");        // кидаем исключение
+    std::cout << "this won't run\n";              // сюда уже не дойдём
 }
 
-void rabota() {
-    Resurs r{"A"};
-    glubzhe();
-    std::cout << "i eto ne vypolnitsya\n";
+void work() {
+    Resource r{"A"};
+    deeper();
+    std::cout << "this won't run either\n";
 }
 
 int main() {
     try {
-        rabota();
+        work();
     } catch (const std::exception& e) {
-        std::cout << "poymali: " << e.what() << "\n";
+        std::cout << "caught: " << e.what() << "\n";
     }
 }
 ```
 
 **Ожидаемый вывод:**
 ```
-A vzyat
-B vzyat
-brosaem oshibku!
-B osvobozhdyon
-A osvobozhdyon
-poymali: polomka
+A taken
+B taken
+throwing an error!
+B freed
+A freed
+caught: breakdown
 ```
 
 🤖 Смотри, что произошло после `throw`:
-- сначала уничтожился `B` (вышли из `glubzhe`) → `B osvobozhdyon`;
-- потом `A` (вышли из `rabota`) → `A osvobozhdyon`;
+- сначала уничтожился `B` (вышли из `deeper`) → `B freed`;
+- потом `A` (вышли из `work`) → `A freed`;
 - и только потом ошибку поймал `catch` в `main`.
 
 **Это и есть раскрутка стека.** Вот почему в RAII-файле мы говорили: деструктор срабатывает **даже при ошибке** — потому что при раскрутке он вызывается автоматически. RAII и раскрутка стека — лучшие друзья.
@@ -170,7 +170,7 @@ x = 99;            // ✅ lvalue можно слева от =
 - **rvalue** — деталь, **только что сошедшая с конвейера**, ещё без номера, которую сейчас же используют. Она временная — поэтому её содержимое можно **смело забрать**, никто больше за ней не придёт.
 
 Примеры rvalue (временных): `x + 5`, `2 * 3`, `"текст"`, результат функции `summa(2,3)`, `std::string("Bob")`.
-Примеры lvalue (именованных): переменная `x`, `imya`, элемент `v[0]`, поле `obj.pole`.
+Примеры lvalue (именованных): переменная `x`, `name`, элемент `v[0]`, поле `obj.field`.
 
 ## Урок 3.2. Зачем это нужно: вот тут и появляется move ⚡
 
@@ -184,29 +184,29 @@ x = 99;            // ✅ lvalue можно слева от =
 #include <iostream>
 #include <string>
 
-void obrabotat(const std::string& s) {       // ловит LVALUE (именованное)
-    std::cout << "kopiruem (lvalue): " << s << "\n";
+void process(const std::string& s) {       // ловит LVALUE (именованное)
+    std::cout << "copy (lvalue): " << s << "\n";
 }
-void obrabotat(std::string&& s) {             // ловит RVALUE (временное) — двойной &&
-    std::cout << "zabiraem/move (rvalue): " << s << "\n";
+void process(std::string&& s) {             // ловит RVALUE (временное) — двойной &&
+    std::cout << "take/move (rvalue): " << s << "\n";
 }
 
 int main() {
-    std::string imya = "Bob";
+    std::string name = "Bob";
 
-    obrabotat(imya);              // imya — LVALUE -> копируем (оригинал ещё нужен)
-    obrabotat("vremennyy");       // "..." — RVALUE -> забираем (временный)
-    obrabotat(imya + "!");        // imya+"!" — RVALUE -> забираем
-    obrabotat(std::move(imya));   // std::move превратил LVALUE в RVALUE -> забираем
+    process(name);              // name — LVALUE -> копируем (оригинал ещё нужен)
+    process("temporary");       // "..." — RVALUE -> забираем (временный)
+    process(name + "!");        // name+"!" — RVALUE -> забираем
+    process(std::move(name));   // std::move превратил LVALUE в RVALUE -> забираем
 }
 ```
 
 **Ожидаемый вывод:**
 ```
-kopiruem (lvalue): Bob
-zabiraem/move (rvalue): vremennyy
-zabiraem/move (rvalue): Bob!
-zabiraem/move (rvalue): Bob
+copy (lvalue): Bob
+take/move (rvalue): temporary
+take/move (rvalue): Bob!
+take/move (rvalue): Bob
 ```
 
 🤖 Разбор:
@@ -221,7 +221,7 @@ zabiraem/move (rvalue): Bob
 > **`std::move` ничего не перемещает.** Это просто **превращение** lvalue в rvalue — «расписка»: *«я обещаю, что больше не буду пользоваться этим объектом, можешь забрать его содержимое»*.
 
 ```cpp
-std::string a = "dlinnaya stroka";
+std::string a = "long string";
 std::string b = a;              // a — lvalue -> КОПИЯ (a остаётся целой)
 std::string c = std::move(a);   // мы пообещали не трогать a -> ПЕРЕМЕЩЕНИЕ (забрали содержимое)
 // теперь a использовать нельзя (мы же обещали)
@@ -238,18 +238,18 @@ std::string c = std::move(a);   // мы пообещали не трогать a
 - **`push_back`** в контейнерах сам выбирает: временный объект — переместит, именованный — скопирует.
   ```cpp
   std::vector<std::string> v;
-  std::string s = "tekst";
+  std::string s = "text";
   v.push_back(s);             // s — lvalue -> копия (s ещё нужна)
   v.push_back(std::move(s));  // обещали не трогать -> перемещение (быстро)
-  v.push_back("srazu");       // rvalue -> перемещение само
+  v.push_back("directly");    // rvalue -> перемещение само
   ```
-- **возврат из функции** (`return bolshoy_vektor;`) — компилятор сам перемещает, не копирует.
+- **возврат из функции** (`return bigVector;`) — компилятор сам перемещает, не копирует.
 - **`unique_ptr`** можно только перемещать (он rvalue-only по сути) — отсюда `auto p2 = std::move(p1);`.
 - Свой **move-конструктор** класса принимает `&&` (как написать — разберём в «дорабатывать»).
 
 ✅ **Правило Боба:** **lvalue** — именованное, живёт дальше → **копируем**. **rvalue** — временное, сейчас исчезнет → можно **забрать (move)**. `std::move` — это «расписка», превращающая твоё именованное в «можно забрать»; после неё старое не трогай. В 99% случаев компилятор делает это **за тебя**.
 
-🎯 **Попробуй сам:** сделай две функции `pokazhi(const std::string&)` и `pokazhi(std::string&&)` (как в Уроке 3.2) и прогони через них: переменную, строковый литерал, `a + b` и `std::move(переменная)`. Сверь, какая версия вызвалась.
+🎯 **Попробуй сам:** сделай две функции `show(const std::string&)` и `show(std::string&&)` (как в Уроке 3.2) и прогони через них: переменную, строковый литерал, `a + b` и `std::move(переменная)`. Сверь, какая версия вызвалась.
 
 ---
 
@@ -319,7 +319,7 @@ auto p = std::make_unique<int>(42);
 | **Раскрутка стека** | Подъём по стеку при ошибке с вызовом деструкторов |
 | **`std::move`** | Пометка «можно забрать содержимое» (передать, не копировать) |
 | **Перемещение (move)** | Передать ресурс другому объекту, не копируя |
-| **lvalue** | Выражение с именем и адресом, живёт дальше (`x`, `v[0]`, `obj.pole`) |
+| **lvalue** | Выражение с именем и адресом, живёт дальше (`x`, `v[0]`, `obj.field`) |
 | **rvalue** | Временное выражение без имени (`x+5`, `"text"`, `std::string("Bob")`) |
 | **rvalue-ссылка `&&`** | Ссылка, цепляющаяся за временные; по ней видно «можно забрать» |
 | **«Опустошённый» объект** | Тот, у кого забрали содержимое через move; не используй его |

@@ -230,37 +230,37 @@ int main(int argc, char *argv[])
     QTextStream out(stdout);            // удобный вывод в консоль (понимает QString)
 
     QString host = "127.0.0.1";        // ⚠️ только СВОЙ компьютер!
-    int portOt = 1;
-    int portDo = 1024;
+    int portFrom = 1;
+    int portTo = 1024;
 
-    out << "Skaniruyu " << host << ", porty " << portOt << ".." << portDo << "\n";
+    out << "Scanning " << host << ", ports " << portFrom << ".." << portTo << "\n";
     out.flush();
 
-    for (int port = portOt; port <= portDo; ++port) {
+    for (int port = portFrom; port <= portTo; ++port) {
         QTcpSocket socket;                    // «трубка» (сама закроется — RAII!)
         socket.connectToHost(host, port);     // стучимся в дверь №port
 
         if (socket.waitForConnected(200)) {   // ждём ответа до 200 мс
-            out << "  port " << port << " — OTKRYT\n";
+            out << "  port " << port << " — OPEN\n";
             out.flush();
             socket.disconnectFromHost();
         }
         // нет ответа -> порт закрыт, молча идём дальше
     }
 
-    out << "Gotovo.\n";
+    out << "Done.\n";
     return 0;
 }
 ```
 
 🤖 Разбор главного:
 - `QTextStream out(stdout)` — наш «принтер». Удобнее `qDebug`, потому что печатает `QString` без лишних кавычек.
-- `for (int port = ...; port <= portDo; ++port)` — обычный **цикл** (Урок 3.5!). Перебираем порты по очереди.
+- `for (int port = ...; port <= portTo; ++port)` — обычный **цикл** (Урок 3.5!). Перебираем порты по очереди.
 - Внутри — наш «стук» из Части 2.
 - `QTcpSocket socket;` создаётся **внутри** цикла и сам уничтожается в конце каждого витка — это **RAII** (Часть D углублённого файла): трубка кладётся автоматически, мы не управляем ею вручную.
 - `out.flush()` — «вытолкни на экран прямо сейчас», чтобы результаты появлялись по ходу, а не в самом конце.
 
-🛠 Запусти на `127.0.0.1`. Если у тебя запущено что-то сетевое (например, веб-сервер или Qt-приложение-сервер), увидишь его порт как `OTKRYT`. На чистой системе открытых портов может не быть — это нормально.
+🛠 Запусти на `127.0.0.1`. Если у тебя запущено что-то сетевое (например, веб-сервер или Qt-приложение-сервер), увидишь его порт как `OPEN`. На чистой системе открытых портов может не быть — это нормально.
 
 ⚠️ **Про скорость:** закрытые/«молчащие» порты ждут полные 200 мс. 1024 порта × 200 мс — это может быть долго. Поэтому:
 - для теста бери диапазон поменьше (например `1..100`),
@@ -297,26 +297,26 @@ int main(int argc, char *argv[])
     QCoreApplication app(argc, argv);
     QTextStream out(stdout);
 
-    QString podset  = "192.168.1.";   // ⚠️ подставь СВОЮ подсеть (см. ipconfig)
-    int     proba   = 445;            // порт-«пробник» (часто открыт у Windows)
+    QString subnet  = "192.168.1.";   // ⚠️ подставь СВОЮ подсеть (см. ipconfig)
+    int     probe   = 445;            // порт-«пробник» (часто открыт у Windows)
 
-    out << "Ishchu kompyutery v seti " << podset << "1-254 ...\n";
+    out << "Searching computers in network " << subnet << "1-254 ...\n";
     out.flush();
 
     for (int i = 1; i <= 254; ++i) {
-        QString ip = podset + QString::number(i);   // склеиваем "192.168.1." + "37"
+        QString ip = subnet + QString::number(i);   // склеиваем "192.168.1." + "37"
 
         QTcpSocket socket;
-        socket.connectToHost(ip, proba);
+        socket.connectToHost(ip, probe);
 
         if (socket.waitForConnected(150)) {
-            out << "  najden kompyuter: " << ip << "\n";
+            out << "  found computer: " << ip << "\n";
             out.flush();
             socket.disconnectFromHost();
         }
     }
 
-    out << "Poisk zavershen.\n";
+    out << "Search finished.\n";
     return 0;
 }
 ```
@@ -377,15 +377,15 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationVersion("1.0");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription("Prostoy skaner portov (tolko svoi seti!)");
+    parser.setApplicationDescription("Simple port scanner (your own networks only!)");
     parser.addHelpOption();       // даёт --help / -h
     parser.addVersionOption();    // даёт --version / -v
 
     //                     имена опции          описание            имя значения  по умолч.
-    QCommandLineOption hostOpt({"H", "host"},    "Adres celi.",       "host", "127.0.0.1");
-    QCommandLineOption fromOpt({"f", "from"},    "Nachalnyy port.",   "port", "1");
-    QCommandLineOption toOpt(  {"t", "to"},      "Konechnyy port.",   "port", "1024");
-    QCommandLineOption timeoutOpt("timeout",     "Taymaut na port, ms.", "ms", "200");
+    QCommandLineOption hostOpt({"H", "host"},    "Target address.",   "host", "127.0.0.1");
+    QCommandLineOption fromOpt({"f", "from"},    "Start port.",       "port", "1");
+    QCommandLineOption toOpt(  {"t", "to"},      "End port.",         "port", "1024");
+    QCommandLineOption timeoutOpt("timeout",     "Per-port timeout, ms.", "ms", "200");
 
     parser.addOption(hostOpt);
     parser.addOption(fromOpt);
@@ -400,19 +400,19 @@ int main(int argc, char *argv[])
     int     timeout = parser.value(timeoutOpt).toInt();
 
     QTextStream out(stdout);
-    out << "Skaniruyu " << host << " porty " << from << ".." << to << "\n";
+    out << "Scanning " << host << " ports " << from << ".." << to << "\n";
     out.flush();
 
     for (int port = from; port <= to; ++port) {
         QTcpSocket socket;
         socket.connectToHost(host, port);
         if (socket.waitForConnected(timeout)) {
-            out << "  port " << port << " OTKRYT\n";
+            out << "  port " << port << " OPEN\n";
             out.flush();
             socket.disconnectFromHost();
         }
     }
-    out << "Gotovo.\n";
+    out << "Done.\n";
     return 0;
 }
 ```
@@ -539,7 +539,7 @@ SOURCES += main.cpp
 ```cpp
 QTcpSocket s;
 s.connectToHost(ip, port);
-bool otkryt = s.waitForConnected(200);   // true -> порт открыт
+bool open = s.waitForConnected(200);   // true -> порт открыт
 ```
 
 **Идея двух сканеров:**

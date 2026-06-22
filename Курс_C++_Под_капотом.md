@@ -134,13 +134,13 @@
    #include <string>
 
    int main() {
-       std::string vvod;
-       std::cout << "Vvedi klyuch dostupa: ";
-       std::cin >> vvod;
-       if (vvod == "ADMIN_7788") {        // секрет «зашит» прямо в код
-           std::cout << "Dostup otkryt\n";
+       std::string input;
+       std::cout << "Enter access key: ";
+       std::cin >> input;
+       if (input == "ADMIN_7788") {        // секрет «зашит» прямо в код
+           std::cout << "Access granted\n";
        } else {
-           std::cout << "Otkazano\n";
+           std::cout << "Denied\n";
        }
    }
    ```
@@ -220,8 +220,8 @@ void target() {                        // машинный код функции
     int local = 0;                          // стек
     auto onheap = std::make_unique<int>(0); // куча
 
-    std::cout << ".text  (kod target): " << reinterpret_cast<void*>(&target)   << "\n";
-    std::cout << ".rodata(stroka)    : " << static_cast<const void*>(g_secret) << "\n";
+    std::cout << ".text  (code target): " << reinterpret_cast<void*>(&target)   << "\n";
+    std::cout << ".rodata(string)    : " << static_cast<const void*>(g_secret) << "\n";
     std::cout << ".data  (g_init)    : " << static_cast<void*>(&g_init)        << "\n";
     std::cout << ".bss   (g_zero)    : " << static_cast<void*>(&g_zero)        << "\n";
     std::cout << "heap   (new)       : " << static_cast<void*>(onheap.get())   << "\n";
@@ -392,9 +392,9 @@ int main() {
     inet_pton(AF_INET, "93.184.216.34", &addr.sin_addr);   // IP сервера (пример)
 
     if (connect(s, (sockaddr*)&addr, sizeof(addr)) == 0)   // 3. подключиться
-        std::cout << "Podklyuchilis k serveru!\n";
+        std::cout << "Connected to server!\n";
     else
-        std::cout << "Soedinenie ne udalos.\n";
+        std::cout << "Connection failed.\n";
 
     closesocket(s);                                        // 4. закрыть сокет
     WSACleanup();                                          // 5. выключить Winsock
@@ -433,7 +433,7 @@ int main() {
 // ⚠️ если линкер ругается на MessageBoxW — в .pro добавь:  LIBS += -luser32
 
 int main() {
-    MessageBoxW(nullptr, L"Privet ot WinAPI", L"Bob", MB_OK | MB_ICONINFORMATION);
+    MessageBoxW(nullptr, L"Hello from WinAPI", L"Bob", MB_OK | MB_ICONINFORMATION);
     return 0;
 }
 ```

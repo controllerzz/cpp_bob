@@ -80,7 +80,87 @@ Program keeps running
 catch (const std::exception& e) { ... }   // поймает и runtime_error, и out_of_range, и …
 ```
 
-🛠 А вот **настоящая** ошибка из библиотеки. Помнишь `.at()` у вектора — он проверяет границы? Если выйти за край, он **сам бросает** `std::out_of_range`:
+### Семейство стандартных ошибок (дерево)
+
+🧠 Стандартные исключения образуют **дерево** (через наследование):
+
+```
+std::exception                     ← общий предок ВСЕХ
+├── std::logic_error               ← «ошибка в логике» = по сути БАГ программиста
+│   ├── std::invalid_argument      ← плохой аргумент
+│   ├── std::out_of_range          ← индекс/ключ за границей
+│   ├── std::length_error          ← запрошен слишком большой размер
+│   └── std::domain_error          ← значение вне допустимой области
+└── std::runtime_error             ← «беда во время работы», заранее не угадать
+    ├── std::range_error           ← результат вне диапазона
+    ├── std::overflow_error        ← переполнение при вычислении
+    └── std::underflow_error       ← «антипереполнение»
+(отдельно) std::bad_alloc          ← не хватило памяти (бросает сам `new`)
+```
+
+🤖 Две главные ветки — и смысл у них **разный**:
+- **`logic_error`** — это **баг**: программист должен был не допустить (передал плохой аргумент, полез за границу). По-хорошему лечится в коде, а не «ловится».
+- **`runtime_error`** — **внешняя беда**, которую заранее не угадать (нет памяти, сбой системы, данные не влезли). Вот её и обрабатывают `try/catch`.
+
+### Каталог: какой готовый тип когда кидать
+
+| Тип (заголовок) | Когда кидать | Пример `throw` |
+|---|---|---|
+| `std::invalid_argument` `<stdexcept>` | плохое значение аргумента | `throw std::invalid_argument("port must be 1..65535");` |
+| `std::out_of_range` `<stdexcept>` | индекс/ключ за границей | `throw std::out_of_range("index too big");` |
+| `std::length_error` `<stdexcept>` | запрошен слишком большой размер | `throw std::length_error("too many items");` |
+| `std::domain_error` `<stdexcept>` | значение вне области функции | `throw std::domain_error("sqrt of negative");` |
+| `std::runtime_error` `<stdexcept>` | общая ошибка времени выполнения | `throw std::runtime_error("connection failed");` |
+| `std::overflow_error` `<stdexcept>` | переполнение при вычислении | `throw std::overflow_error("number too big");` |
+| `std::bad_alloc` `<new>` | кончилась память | обычно **ловишь**, а не кидаешь (кидает `new`) |
+
+⚠️ Почти все берут **текст-сообщение** в конструкторе (`const std::string&` / `const char*`). Особняком — `std::bad_alloc`: у него сообщения нет, руками его не кидают (его бросает оператор `new`, а ты можешь поймать).
+
+### Пример: кидаем готовые типы по ситуации
+
+🛠 Функция-проверка кидает **разные стандартные** исключения в зависимости от проблемы:
+
+```cpp
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+// вернуть имя сервиса по номеру порта, проверяя ввод
+std::string serviceName(const std::vector<std::string>& names, int port) {
+    if (port < 1 || port > 65535)
+        throw std::invalid_argument("port must be 1..65535");   // плохой аргумент
+
+    if (port >= (int)names.size())
+        throw std::out_of_range("no name for this port");       // за границей списка
+
+    return names.at(port);
+}
+
+int main() {
+    std::vector<std::string> names = {"reserved", "tcpmux", "echo"};
+    try {
+        std::cout << serviceName(names, 70000) << "\n";   // 70000 -> invalid_argument
+    }
+    catch (const std::invalid_argument& e) {
+        std::cout << "Bad argument: " << e.what() << "\n";
+    }
+    catch (const std::out_of_range& e) {
+        std::cout << "Out of range: " << e.what() << "\n";
+    }
+}
+```
+
+**Ожидаемый вывод:**
+```
+Bad argument: port must be 1..65535
+```
+
+🤖 Идея: **каждой беде — свой готовый тип**. Ловящий код по типу сразу понимает, **что** случилось, и реагирует точно (`invalid_argument` — поправь ввод; `out_of_range` — проверь размер). Не нужно разбирать текст сообщения — достаточно типа.
+
+### А ещё их кидает и сама библиотека
+
+🛠 Помнишь `.at()` у вектора — он проверяет границы? Если выйти за край, он **сам бросает** `std::out_of_range`:
 
 ```cpp
 #include <iostream>
@@ -283,6 +363,8 @@ catch (const NetworkError& e) {
 | **`try`** | «Попробуй этот блок» |
 | **`catch`** | «Поймай ошибку, если будет» |
 | **`std::exception`** | Базовый класс всех стандартных ошибок; `catch` по нему ловит все |
+| **`logic_error` / `runtime_error`** | Две ветки: баг программиста / внешняя беда во время работы |
+| **`invalid_argument`, `out_of_range`…** | Готовые типы из `<stdexcept>` — кидаешь нужный по ситуации |
 | **`.what()`** | Метод исключения, возвращает текст ошибки |
 | **Код ошибки** | Старый способ: вернуть `-1`/`false` вместо броска |
 | **Свой тип исключения** | Класс-наследник `std::runtime_error` с понятным именем и данными |
